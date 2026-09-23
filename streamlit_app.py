@@ -96,28 +96,35 @@ def check_maps():
     notifications = []
     for map_name in st.session_state.watched_maps:
         players = maps.get(map_name, 0)
-        status = "occupied" if players > 0 else "empty"
+        threshold = max(1, int(st.session_state.thresholds.get(map_name, 1)))
+        alerting = players < threshold
+        status = "empty" if players == 0 else ("below_threshold" if alerting else "occupied")
         previous = st.session_state.statuses.get(map_name)
         st.session_state.statuses[map_name] = {
             "status": status,
             "players": players,
+            "threshold": threshold,
+            "alerting": alerting,
             "checked_at": timestamp,
         }
-        if previous and previous["status"] != status:
-            event = {"map": map_name, "status": status, "players": players, "at": timestamp}
+        previous_alerting = None if not previous else previous.get(
+            "alerting", previous.get("status") == "empty"
+        )
+        if previous and previous_alerting != alerting:
+            event = {"map": map_name, "kind": "below" if alerting else "recovered", "players": players, "threshold": threshold, "at": timestamp}
             st.session_state.events.insert(0, event)
             st.session_state.events = st.session_state.events[:100]
             notifications.append(event)
 
     for event in notifications:
-        if event["status"] == "empty":
-            message = f"🚨 **{event['map']} is empty** — no players detected."
+        if event["kind"] == "below":
+            message = f"🚨 **{event['map']} is below its player threshold** — {event['players']} player(s), threshold is {event['threshold']}."
         else:
-            message = f"✅ **{event['map']} is occupied** — {event['players']} player(s) detected."
+            message = f"✅ **{event['map']} recovered** — {event['players']} player(s), threshold is {event['threshold']}."
         send_discord(st.session_state.discord_webhook_url, message)
 
     st.session_state.last_check_had_empty = any(
-        st.session_state.statuses[name]["status"] == "empty"
+        st.session_state.statuses[name]["alerting"]
         for name in st.session_state.watched_maps
     )
     st.session_state.last_checked_at = timestamp
@@ -129,6 +136,7 @@ def initialize():
         "watched_maps": ["gef_dun02"],
         "statuses": {},
         "events": [],
+        "thresholds": {"gef_dun02": 1},
         "monitoring": False,
         "last_checked_at": "",
         "last_error": "",
@@ -265,6 +273,7 @@ with add_col:
     if st.button("Add map", use_container_width=True, disabled=not map_options):
         if map_name not in st.session_state.watched_maps:
             st.session_state.watched_maps.append(map_name)
+            st.session_state.thresholds.setdefault(map_name, 1)
             st.rerun()
 
 st.caption("The list contains maps currently reported by uaRO plus maps already being watched. Empty maps are not listed by uaRO, so keep a watched map selected even when it disappears from the source page.")
@@ -277,15 +286,29 @@ if not st.session_state.watched_maps:
 else:
     for map_name in st.session_state.watched_maps:
         status = st.session_state.statuses.get(map_name, {})
-        label = status.get("status", "waiting").upper()
+        threshold = int(st.session_state.thresholds.get(map_name, 1))
         players = status.get("players", "—")
-        col1, col2 = st.columns([4, 1])
+        col1, col2, col3 = st.columns([2.2, 1.5, 1])
         with col1:
-            st.write(f"**{map_name}** — {label} — {players} player(s)")
+            st.write(f"**{map_name}**")
+            st.caption(f"{players} player(s) · alert below {threshold}")
         with col2:
+            new_threshold = st.number_input(
+                "Alert below",
+                min_value=1,
+                max_value=9999,
+                value=threshold,
+                step=1,
+                key=f"threshold_{map_name}",
+            )
+            st.session_state.thresholds[map_name] = int(new_threshold)
+        with col3:
+            label = "WAITING" if not status else ("ALERT" if status.get("alerting") else "OK")
+            st.metric("Status", label)
             if st.button("Remove", key=f"remove_{map_name}"):
                 st.session_state.watched_maps.remove(map_name)
                 st.session_state.statuses.pop(map_name, None)
+                st.session_state.thresholds.pop(map_name, None)
                 st.rerun()
 
 st.caption(f"Last checked: {st.session_state.last_checked_at or 'not yet'}")
@@ -295,6 +318,10 @@ if st.session_state.last_error:
 st.subheader("Recent changes")
 if st.session_state.events:
     for event in st.session_state.events[:10]:
-        st.write(f"{event['map']} became {event['status']} at {event['at']}")
+        description = "fell below threshold" if event["kind"] == "below" else "recovered"
+        st.write(
+            f"{event['map']} {description} — {event['players']} player(s), "
+            f"threshold {event['threshold']} — {event['at']}"
+        )
 else:
     st.caption("No changes yet.")

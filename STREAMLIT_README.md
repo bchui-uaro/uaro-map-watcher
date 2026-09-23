@@ -24,6 +24,8 @@ MAP_URL = "https://uaro.net/cp/?module=character&action=mapstats"
 
 The app starts with monitoring OFF. Use the sidebar to enter two intervals: the normal map-check interval and the delay after a map is first found empty. Click **Refresh map list**, select a map from the dropdown, and click **Add map**. Click **Start Monitoring** to perform an initial check immediately. Click **Stop Monitoring** when finished.
 
+Each watched map has an **Alert below** threshold. A value of `2` alerts when the map has `0` or `1` player and sends a recovery message when it reaches `2` or more. The default value is `1`, which preserves empty-map-only alerts.
+
 The uaRO page only displays maps that currently have players. Therefore, an empty map cannot be discovered from a fresh page load; maps disappear when empty. The app keeps watched maps in the dropdown after they disappear and includes `gef_dun02` by default.
 
 The free Streamlit service keeps state in the current app session. If the app sleeps or restarts, monitoring returns to OFF and watched maps reset to the default `gef_dun02`.
