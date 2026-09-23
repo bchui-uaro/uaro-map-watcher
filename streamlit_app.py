@@ -89,6 +89,13 @@ def now_text():
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
+def event_kind(event):
+    """Support event records created by older app versions."""
+    if event.get("kind"):
+        return event["kind"]
+    return "below" if event.get("status") in {"empty", "below_threshold"} else "recovered"
+
+
 def check_maps():
     maps = fetch_maps(st.session_state.map_url)
     st.session_state.map_options = sorted(set(st.session_state.map_options) | set(maps))
@@ -212,10 +219,25 @@ with st.sidebar:
 if st.session_state.dark_mode:
     st.markdown(
         """<style>
-        .stApp { background: #0f172a; }
-        [data-testid="stHeader"] { background: rgba(15, 23, 42, 0.85); }
+        .stApp, [data-testid="stAppViewContainer"] { background: #0f172a; color: #f8fafc; }
+        [data-testid="stHeader"] { background: rgba(15, 23, 42, 0.95); }
         [data-testid="stSidebar"] { background: #111827; }
-        [data-testid="stMetricValue"] { color: #e2e8f0; }
+        [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li,
+        [data-testid="stMarkdownContainer"] h1, [data-testid="stMarkdownContainer"] h2,
+        [data-testid="stMarkdownContainer"] h3, [data-testid="stWidgetLabel"] p,
+        [data-testid="stWidgetLabel"] label { color: #f8fafc !important; }
+        [data-testid="stCaptionContainer"] p, [data-testid="stCaptionContainer"] span,
+        [data-testid="stHelp"] { color: #cbd5e1 !important; }
+        input, textarea, [data-baseweb="select"] *, [data-baseweb="input"] * {
+            color: #f8fafc !important; background-color: #1e293b !important;
+        }
+        [data-testid="stMetricValue"] { color: #f8fafc !important; font-size: 1rem; }
+        [data-testid="stMetricLabel"] { color: #cbd5e1 !important; }
+        .status-chip { display:inline-block; padding:2px 8px; border-radius:999px; font-size:.75rem; font-weight:700; }
+        .status-ok { background:#14532d; color:#bbf7d0 !important; }
+        .status-alert { background:#7f1d1d; color:#fecaca !important; }
+        .status-waiting { background:#334155; color:#e2e8f0 !important; }
+        .status-header { color:#cbd5e1 !important; font-size:.75rem; font-weight:700; text-transform:uppercase; }
         </style>""",
         unsafe_allow_html=True,
     )
@@ -284,28 +306,40 @@ st.subheader("Current status")
 if not st.session_state.watched_maps:
     st.caption("No maps are being watched.")
 else:
+    header = st.columns([2.2, 1.0, 1.25, 0.8, 0.45])
+    for column, label in zip(header, ["Map", "Players", "Alert below", "State", ""]):
+        with column:
+            st.markdown(f'<span class="status-header">{label}</span>', unsafe_allow_html=True)
     for map_name in st.session_state.watched_maps:
         status = st.session_state.statuses.get(map_name, {})
         threshold = int(st.session_state.thresholds.get(map_name, 1))
         players = status.get("players", "—")
-        col1, col2, col3 = st.columns([2.2, 1.5, 1])
+        col1, col2, col3, col4, col5 = st.columns([2.2, 1.0, 1.25, 0.8, 0.45])
         with col1:
             st.write(f"**{map_name}**")
-            st.caption(f"{players} player(s) · alert below {threshold}")
         with col2:
+            st.write(str(players))
+        with col3:
             new_threshold = st.number_input(
-                "Alert below",
+                "Threshold",
                 min_value=1,
                 max_value=9999,
                 value=threshold,
                 step=1,
                 key=f"threshold_{map_name}",
+                label_visibility="collapsed",
             )
             st.session_state.thresholds[map_name] = int(new_threshold)
-        with col3:
-            label = "WAITING" if not status else ("ALERT" if status.get("alerting") else "OK")
-            st.metric("Status", label)
-            if st.button("Remove", key=f"remove_{map_name}"):
+        with col4:
+            if not status:
+                label, css = "WAITING", "status-waiting"
+            elif status.get("alerting"):
+                label, css = "ALERT", "status-alert"
+            else:
+                label, css = "OK", "status-ok"
+            st.markdown(f'<span class="status-chip {css}">{label}</span>', unsafe_allow_html=True)
+        with col5:
+            if st.button("×", key=f"remove_{map_name}", help=f"Stop watching {map_name}"):
                 st.session_state.watched_maps.remove(map_name)
                 st.session_state.statuses.pop(map_name, None)
                 st.session_state.thresholds.pop(map_name, None)
@@ -318,10 +352,13 @@ if st.session_state.last_error:
 st.subheader("Recent changes")
 if st.session_state.events:
     for event in st.session_state.events[:10]:
-        description = "fell below threshold" if event["kind"] == "below" else "recovered"
+        kind = event_kind(event)
+        description = "fell below threshold" if kind == "below" else "recovered"
+        players = event.get("players", 0)
+        threshold = event.get("threshold", 1)
         st.write(
-            f"{event['map']} {description} — {event['players']} player(s), "
-            f"threshold {event['threshold']} — {event['at']}"
+            f"{event['map']} {description} — {players} player(s), "
+            f"threshold {threshold} — {event.get('at', 'unknown time')}"
         )
 else:
     st.caption("No changes yet.")
