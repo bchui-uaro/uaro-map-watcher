@@ -9,6 +9,16 @@ from streamlit_autorefresh import st_autorefresh
 
 
 DEFAULT_MAP_URL = "https://uaro.net/cp/?module=character&action=mapstats"
+INTERVALS = {
+    "30 seconds": 30,
+    "1 minute": 60,
+    "2 minutes": 120,
+    "5 minutes": 300,
+    "10 minutes": 600,
+    "15 minutes": 900,
+    "30 minutes": 1800,
+    "60 minutes": 3600,
+}
 
 
 class MapTableParser(HTMLParser):
@@ -90,6 +100,7 @@ def now_text():
 
 def check_maps():
     maps = fetch_maps(st.session_state.map_url)
+    st.session_state.map_options = sorted(set(st.session_state.map_options) | set(maps))
     timestamp = now_text()
     notifications = []
     for map_name in st.session_state.watched_maps:
@@ -129,6 +140,7 @@ def initialize():
         "map_url": read_secret("MAP_URL", DEFAULT_MAP_URL),
         "poll_interval": max(30, int(read_secret("POLL_INTERVAL_SECONDS", "60"))),
         "discord_webhook_url": read_secret("DISCORD_WEBHOOK_URL", ""),
+        "map_options": ["gef_dun02"],
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
@@ -169,15 +181,42 @@ if st.session_state.monitoring:
 else:
     st.info("Monitoring OFF — no uaRO checks are running.")
 
-with st.form("add_map", clear_on_submit=True):
-    map_name = st.text_input("Map name", placeholder="gef_dun02")
-    if st.form_submit_button("Add map"):
-        if re.fullmatch(r"[A-Za-z0-9_-]+", map_name.strip()):
-            if map_name.strip() not in st.session_state.watched_maps:
-                st.session_state.watched_maps.append(map_name.strip())
+interval_labels = list(INTERVALS)
+default_interval = next(
+    (label for label, seconds in INTERVALS.items() if seconds == st.session_state.poll_interval),
+    "1 minute",
+)
+selected_interval = st.selectbox(
+    "Check interval (including while a map remains empty)",
+    interval_labels,
+    index=interval_labels.index(default_interval),
+    help="Start Monitoring performs an initial check immediately, then checks again at this interval.",
+)
+st.session_state.poll_interval = INTERVALS[selected_interval]
+
+refresh_col, map_col, add_col = st.columns([1.2, 2.5, 1.2])
+with refresh_col:
+    if st.button("↻ Refresh map list", use_container_width=True):
+        try:
+            live_maps = fetch_maps(st.session_state.map_url)
+            st.session_state.map_options = sorted(set(st.session_state.map_options) | set(live_maps))
+            st.session_state.map_list_message = f"Loaded {len(live_maps)} map names from uaRO."
+        except Exception as error:
+            st.session_state.map_list_message = f"Could not load map names: {error}"
+with map_col:
+    map_options = sorted(set(st.session_state.map_options) | set(st.session_state.watched_maps))
+    map_name = st.selectbox("Map name", map_options, disabled=not map_options)
+with add_col:
+    st.write("")
+    st.write("")
+    if st.button("Add map", use_container_width=True, disabled=not map_options):
+        if map_name not in st.session_state.watched_maps:
+            st.session_state.watched_maps.append(map_name)
             st.rerun()
-        else:
-            st.error("Use letters, numbers, underscores, or hyphens only.")
+
+st.caption("The list contains maps currently reported by uaRO plus maps already being watched. Empty maps are not listed by uaRO, so keep a watched map selected even when it disappears from the source page.")
+if st.session_state.get("map_list_message"):
+    st.caption(st.session_state.map_list_message)
 
 st.subheader("Current status")
 if not st.session_state.watched_maps:
