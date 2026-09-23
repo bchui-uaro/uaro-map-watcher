@@ -22,7 +22,7 @@ MAP_URL = "https://uaro.net/cp/?module=character&action=mapstats"
 
 ## Use
 
-The app starts with monitoring OFF. Use the sidebar to enter two intervals: the normal map-check interval and the delay after a map is first found empty. Click **Refresh map list**, select a map from the dropdown, and click **Add map**. Click **Start Monitoring** to perform an initial check immediately. Click **Stop Monitoring** when finished.
+The app starts with monitoring OFF. Use the sidebar to enter two intervals: the normal map-check interval and the delay after a map is first found empty. You can turn off **Use empty-result delay** to use the normal interval for every check. Click **Check Page Now** for a single manual page check without starting continuous monitoring. Click **Refresh map list**, select a map from the dropdown, and click **Add map**. Click **Start Monitoring** to begin automatic checks. Click **Stop Monitoring** when finished.
 
 Each watched map has an **Alert below** threshold. A value of `2` alerts when the map has `0` or `1` player and sends a recovery message when it reaches `2` or more. The default value is `1`, which preserves empty-map-only alerts.
 

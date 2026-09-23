@@ -153,6 +153,7 @@ def initialize():
         "normal_unit": "seconds",
         "empty_delay_value": max(1, int(read_secret("EMPTY_DELAY_SECONDS", "300")) // 60),
         "empty_delay_unit": "minutes",
+        "empty_delay_enabled": True,
         "last_check_had_empty": False,
         "dark_mode": True,
         "discord_webhook_url": read_secret("DISCORD_WEBHOOK_URL", ""),
@@ -206,6 +207,11 @@ with st.sidebar:
         index=list(TIME_UNITS).index(st.session_state.empty_delay_unit),
         key="empty_delay_unit",
     )
+    st.session_state.empty_delay_enabled = st.toggle(
+        "Use empty-result delay",
+        value=st.session_state.empty_delay_enabled,
+        help="When disabled, repeat checks use the normal interval even after a map is empty.",
+    )
     st.session_state.normal_interval_seconds = max(
         30, int(st.session_state.normal_value) * TIME_UNITS[st.session_state.normal_unit]
     )
@@ -219,9 +225,9 @@ with st.sidebar:
 if st.session_state.dark_mode:
     st.markdown(
         """<style>
-        .stApp, [data-testid="stAppViewContainer"] { background: #0f172a; color: #f8fafc; }
-        [data-testid="stHeader"] { background: rgba(15, 23, 42, 0.95); }
-        [data-testid="stSidebar"] { background: #111827; }
+        .stApp, [data-testid="stAppViewContainer"] { background: #243247; color: #f8fafc; }
+        [data-testid="stHeader"] { background: rgba(36, 50, 71, 0.96); }
+        [data-testid="stSidebar"] { background: #2d3b52; }
         [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li,
         [data-testid="stMarkdownContainer"] h1, [data-testid="stMarkdownContainer"] h2,
         [data-testid="stMarkdownContainer"] h3, [data-testid="stWidgetLabel"] p,
@@ -233,6 +239,11 @@ if st.session_state.dark_mode:
         }
         [data-testid="stMetricValue"] { color: #f8fafc !important; font-size: 1rem; }
         [data-testid="stMetricLabel"] { color: #cbd5e1 !important; }
+        [data-testid="stButton"] button { background: #40516b !important; color: #f8fafc !important; border: 1px solid #7183a0 !important; }
+        [data-testid="stButton"] button * { color: #f8fafc !important; }
+        [data-testid="stButton"] button:hover { background: #526987 !important; color: #ffffff !important; border-color: #a9bad3 !important; }
+        [data-testid="stButton"] button[kind="primary"] { background: #176b61 !important; border-color: #55c5b6 !important; }
+        [data-testid="stButton"] button[kind="primary"]:hover { background: #238c7e !important; }
         .status-chip { display:inline-block; padding:2px 8px; border-radius:999px; font-size:.75rem; font-weight:700; }
         .status-ok { background:#14532d; color:#bbf7d0 !important; }
         .status-alert { background:#7f1d1d; color:#fecaca !important; }
@@ -245,32 +256,36 @@ if st.session_state.dark_mode:
 st.title("🎮 uaRO Map Watcher")
 st.caption("Watch Ragnarok maps and receive Discord alerts when players leave or return.")
 
+left, middle, right = st.columns([1, 1, 1])
+with left:
+    if st.button("▶ Start Monitoring", type="primary", use_container_width=True):
+        st.session_state.monitoring = True
+        st.rerun()
+with middle:
+    if st.button("■ Stop Monitoring", use_container_width=True):
+        st.session_state.monitoring = False
+        st.rerun()
+with right:
+    manual_check = st.button("↻ Check Page Now", use_container_width=True)
+
 if st.session_state.monitoring:
     refresh_seconds = (
         st.session_state.empty_delay_seconds
-        if st.session_state.last_check_had_empty
+        if st.session_state.empty_delay_enabled and st.session_state.last_check_had_empty
         else st.session_state.normal_interval_seconds
     )
     st_autorefresh(interval=refresh_seconds * 1000, key="map_poll")
+
+if st.session_state.monitoring or manual_check:
     try:
         check_maps()
     except Exception as error:
         st.session_state.last_error = str(error)
 
-left, right = st.columns(2)
-with left:
-    if st.button("▶ Start Monitoring", type="primary", use_container_width=True):
-        st.session_state.monitoring = True
-        st.rerun()
-with right:
-    if st.button("■ Stop Monitoring", use_container_width=True):
-        st.session_state.monitoring = False
-        st.rerun()
-
 if st.session_state.monitoring:
     active_interval = (
         st.session_state.empty_delay_seconds
-        if st.session_state.last_check_had_empty
+        if st.session_state.empty_delay_enabled and st.session_state.last_check_had_empty
         else st.session_state.normal_interval_seconds
     )
     st.success(f"Monitoring ON — next full page ping in about {active_interval} seconds.")
