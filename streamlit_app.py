@@ -9,16 +9,7 @@ from streamlit_autorefresh import st_autorefresh
 
 
 DEFAULT_MAP_URL = "https://uaro.net/cp/?module=character&action=mapstats"
-INTERVALS = {
-    "30 seconds": 30,
-    "1 minute": 60,
-    "2 minutes": 120,
-    "5 minutes": 300,
-    "10 minutes": 600,
-    "15 minutes": 900,
-    "30 minutes": 1800,
-    "60 minutes": 3600,
-}
+TIME_UNITS = {"seconds": 1, "minutes": 60, "hours": 3600}
 
 
 class MapTableParser(HTMLParser):
@@ -125,6 +116,10 @@ def check_maps():
             message = f"✅ **{event['map']} is occupied** — {event['players']} player(s) detected."
         send_discord(st.session_state.discord_webhook_url, message)
 
+    st.session_state.last_check_had_empty = any(
+        st.session_state.statuses[name]["status"] == "empty"
+        for name in st.session_state.watched_maps
+    )
     st.session_state.last_checked_at = timestamp
     st.session_state.last_error = ""
 
@@ -139,6 +134,12 @@ def initialize():
         "last_error": "",
         "map_url": read_secret("MAP_URL", DEFAULT_MAP_URL),
         "poll_interval": max(30, int(read_secret("POLL_INTERVAL_SECONDS", "60"))),
+        "normal_value": max(1, int(read_secret("POLL_INTERVAL_SECONDS", "60"))),
+        "normal_unit": "seconds",
+        "empty_delay_value": max(1, int(read_secret("EMPTY_DELAY_SECONDS", "300")) // 60),
+        "empty_delay_unit": "minutes",
+        "last_check_had_empty": False,
+        "dark_mode": True,
         "discord_webhook_url": read_secret("DISCORD_WEBHOOK_URL", ""),
         "map_options": ["gef_dun02"],
     }
@@ -156,11 +157,71 @@ if access_token and provided_token != access_token:
     st.error("Access token required. Add ?token=YOUR_ACCESS_TOKEN to the app URL.")
     st.stop()
 
-st.title("uaRO Map Watcher")
-st.caption("Monitor watched Ragnarok maps and receive Discord alerts when they become empty.")
+with st.sidebar:
+    st.header("Settings")
+    st.session_state.dark_mode = st.toggle("Dark mode", value=st.session_state.dark_mode)
+    st.markdown(f"[Open original uaRO map page]({st.session_state.map_url})")
+    st.divider()
+    st.subheader("Monitoring intervals")
+    st.number_input(
+        "1. How often to check maps",
+        min_value=1,
+        max_value=86400,
+        step=1,
+        key="normal_value",
+        help="The first check happens immediately after Start Monitoring. This controls normal repeat checks.",
+    )
+    st.selectbox(
+        "Normal interval unit",
+        list(TIME_UNITS),
+        index=list(TIME_UNITS).index(st.session_state.normal_unit),
+        key="normal_unit",
+    )
+    st.number_input(
+        "2. Delay after first empty result",
+        min_value=1,
+        max_value=86400,
+        step=1,
+        key="empty_delay_value",
+        help="After a watched map is found empty, this is the delay before the next full uaRO page ping.",
+    )
+    st.selectbox(
+        "Empty-result delay unit",
+        list(TIME_UNITS),
+        index=list(TIME_UNITS).index(st.session_state.empty_delay_unit),
+        key="empty_delay_unit",
+    )
+    st.session_state.normal_interval_seconds = max(
+        30, int(st.session_state.normal_value) * TIME_UNITS[st.session_state.normal_unit]
+    )
+    st.session_state.empty_delay_seconds = max(
+        30, int(st.session_state.empty_delay_value) * TIME_UNITS[st.session_state.empty_delay_unit]
+    )
+    st.caption(
+        f"Normal: {st.session_state.normal_interval_seconds}s · Empty delay: {st.session_state.empty_delay_seconds}s"
+    )
+
+if st.session_state.dark_mode:
+    st.markdown(
+        """<style>
+        .stApp { background: #0f172a; }
+        [data-testid="stHeader"] { background: rgba(15, 23, 42, 0.85); }
+        [data-testid="stSidebar"] { background: #111827; }
+        [data-testid="stMetricValue"] { color: #e2e8f0; }
+        </style>""",
+        unsafe_allow_html=True,
+    )
+
+st.title("🎮 uaRO Map Watcher")
+st.caption("Watch Ragnarok maps and receive Discord alerts when players leave or return.")
 
 if st.session_state.monitoring:
-    st_autorefresh(interval=st.session_state.poll_interval * 1000, key="map_poll")
+    refresh_seconds = (
+        st.session_state.empty_delay_seconds
+        if st.session_state.last_check_had_empty
+        else st.session_state.normal_interval_seconds
+    )
+    st_autorefresh(interval=refresh_seconds * 1000, key="map_poll")
     try:
         check_maps()
     except Exception as error:
@@ -177,22 +238,14 @@ with right:
         st.rerun()
 
 if st.session_state.monitoring:
-    st.success(f"Monitoring ON — checking every {st.session_state.poll_interval} seconds.")
+    active_interval = (
+        st.session_state.empty_delay_seconds
+        if st.session_state.last_check_had_empty
+        else st.session_state.normal_interval_seconds
+    )
+    st.success(f"Monitoring ON — next full page ping in about {active_interval} seconds.")
 else:
     st.info("Monitoring OFF — no uaRO checks are running.")
-
-interval_labels = list(INTERVALS)
-default_interval = next(
-    (label for label, seconds in INTERVALS.items() if seconds == st.session_state.poll_interval),
-    "1 minute",
-)
-selected_interval = st.selectbox(
-    "Check interval (including while a map remains empty)",
-    interval_labels,
-    index=interval_labels.index(default_interval),
-    help="Start Monitoring performs an initial check immediately, then checks again at this interval.",
-)
-st.session_state.poll_interval = INTERVALS[selected_interval]
 
 refresh_col, map_col, add_col = st.columns([1.2, 2.5, 1.2])
 with refresh_col:

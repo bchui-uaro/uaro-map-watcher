@@ -22,7 +22,7 @@ MAP_URL = "https://uaro.net/cp/?module=character&action=mapstats"
 
 ## Use
 
-The app starts with monitoring OFF. Choose an interval, click **Refresh map list**, select a map from the dropdown, and click **Add map**. Click **Start Monitoring** to perform an initial check immediately and then repeat checks at the selected interval, including while a map remains empty. Click **Stop Monitoring** when finished.
+The app starts with monitoring OFF. Use the sidebar to enter two intervals: the normal map-check interval and the delay after a map is first found empty. Click **Refresh map list**, select a map from the dropdown, and click **Add map**. Click **Start Monitoring** to perform an initial check immediately. Click **Stop Monitoring** when finished.
 
 The uaRO page only displays maps that currently have players. Therefore, an empty map cannot be discovered from a fresh page load; maps disappear when empty. The app keeps watched maps in the dropdown after they disappear and includes `gef_dun02` by default.
 
