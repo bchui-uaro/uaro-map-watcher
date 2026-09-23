@@ -1,0 +1,208 @@
+import html
+import re
+from datetime import datetime, timezone
+from html.parser import HTMLParser
+
+import requests
+import streamlit as st
+from streamlit_autorefresh import st_autorefresh
+
+
+DEFAULT_MAP_URL = "https://uaro.net/cp/?module=character&action=mapstats"
+
+
+class MapTableParser(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.in_row = False
+        self.in_cell = False
+        self.cells = []
+        self.current_cell = ""
+        self.maps = {}
+
+    def handle_starttag(self, tag, attrs):
+        tag = tag.lower()
+        if tag == "tr":
+            self.in_row = True
+            self.cells = []
+        elif self.in_row and tag in {"td", "th"}:
+            self.in_cell = True
+            self.current_cell = ""
+
+    def handle_data(self, data):
+        if self.in_cell:
+            self.current_cell += data
+
+    def handle_endtag(self, tag):
+        tag = tag.lower()
+        if self.in_cell and tag in {"td", "th"}:
+            self.cells.append(" ".join(self.current_cell.split()))
+            self.in_cell = False
+        elif tag == "tr" and self.in_row:
+            self.in_row = False
+            if len(self.cells) >= 2:
+                map_name = self.cells[0].strip()
+                player_match = re.search(r"\d+", self.cells[1])
+                if re.fullmatch(r"[A-Za-z0-9_-]+", map_name) and player_match:
+                    self.maps[map_name] = int(player_match.group())
+
+
+def read_secret(name, default=""):
+    try:
+        return st.secrets.get(name, default)
+    except Exception:
+        return default
+
+
+def parse_maps(page):
+    parser = MapTableParser()
+    parser.feed(page)
+    if parser.maps:
+        return parser.maps
+
+    text = re.sub(r"<[^>]+>", " ", page)
+    text = html.unescape(" ".join(text.split()))
+    return {match.group(1): int(match.group(2)) for match in re.finditer(
+        r"\b([A-Za-z0-9_-]+)\s+(\d+)\s+player", text, re.IGNORECASE
+    )}
+
+
+def fetch_maps(map_url):
+    response = requests.get(
+        map_url,
+        headers={"User-Agent": "uaRO-map-watcher/1.0"},
+        timeout=15,
+    )
+    response.raise_for_status()
+    return parse_maps(response.text)
+
+
+def send_discord(webhook_url, message):
+    if not webhook_url:
+        return
+    response = requests.post(webhook_url, json={"content": message}, timeout=15)
+    response.raise_for_status()
+
+
+def now_text():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+
+def check_maps():
+    maps = fetch_maps(st.session_state.map_url)
+    timestamp = now_text()
+    notifications = []
+    for map_name in st.session_state.watched_maps:
+        players = maps.get(map_name, 0)
+        status = "occupied" if players > 0 else "empty"
+        previous = st.session_state.statuses.get(map_name)
+        st.session_state.statuses[map_name] = {
+            "status": status,
+            "players": players,
+            "checked_at": timestamp,
+        }
+        if previous and previous["status"] != status:
+            event = {"map": map_name, "status": status, "players": players, "at": timestamp}
+            st.session_state.events.insert(0, event)
+            st.session_state.events = st.session_state.events[:100]
+            notifications.append(event)
+
+    for event in notifications:
+        if event["status"] == "empty":
+            message = f"🚨 **{event['map']} is empty** — no players detected."
+        else:
+            message = f"✅ **{event['map']} is occupied** — {event['players']} player(s) detected."
+        send_discord(st.session_state.discord_webhook_url, message)
+
+    st.session_state.last_checked_at = timestamp
+    st.session_state.last_error = ""
+
+
+def initialize():
+    defaults = {
+        "watched_maps": ["gef_dun02"],
+        "statuses": {},
+        "events": [],
+        "monitoring": False,
+        "last_checked_at": "",
+        "last_error": "",
+        "map_url": read_secret("MAP_URL", DEFAULT_MAP_URL),
+        "poll_interval": max(30, int(read_secret("POLL_INTERVAL_SECONDS", "60"))),
+        "discord_webhook_url": read_secret("DISCORD_WEBHOOK_URL", ""),
+    }
+    for key, value in defaults.items():
+        st.session_state.setdefault(key, value)
+
+
+st.set_page_config(page_title="uaRO Map Watcher", page_icon="🎮", layout="centered")
+initialize()
+
+access_token = read_secret("ACCESS_TOKEN", "")
+provided_token = st.query_params.get("token", "")
+if access_token and provided_token != access_token:
+    st.title("uaRO Map Watcher")
+    st.error("Access token required. Add ?token=YOUR_ACCESS_TOKEN to the app URL.")
+    st.stop()
+
+st.title("uaRO Map Watcher")
+st.caption("Monitor watched Ragnarok maps and receive Discord alerts when they become empty.")
+
+if st.session_state.monitoring:
+    st_autorefresh(interval=st.session_state.poll_interval * 1000, key="map_poll")
+    try:
+        check_maps()
+    except Exception as error:
+        st.session_state.last_error = str(error)
+
+left, right = st.columns(2)
+with left:
+    if st.button("▶ Start Monitoring", type="primary", use_container_width=True):
+        st.session_state.monitoring = True
+        st.rerun()
+with right:
+    if st.button("■ Stop Monitoring", use_container_width=True):
+        st.session_state.monitoring = False
+        st.rerun()
+
+if st.session_state.monitoring:
+    st.success(f"Monitoring ON — checking every {st.session_state.poll_interval} seconds.")
+else:
+    st.info("Monitoring OFF — no uaRO checks are running.")
+
+with st.form("add_map", clear_on_submit=True):
+    map_name = st.text_input("Map name", placeholder="gef_dun02")
+    if st.form_submit_button("Add map"):
+        if re.fullmatch(r"[A-Za-z0-9_-]+", map_name.strip()):
+            if map_name.strip() not in st.session_state.watched_maps:
+                st.session_state.watched_maps.append(map_name.strip())
+            st.rerun()
+        else:
+            st.error("Use letters, numbers, underscores, or hyphens only.")
+
+st.subheader("Current status")
+if not st.session_state.watched_maps:
+    st.caption("No maps are being watched.")
+else:
+    for map_name in st.session_state.watched_maps:
+        status = st.session_state.statuses.get(map_name, {})
+        label = status.get("status", "waiting").upper()
+        players = status.get("players", "—")
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            st.write(f"**{map_name}** — {label} — {players} player(s)")
+        with col2:
+            if st.button("Remove", key=f"remove_{map_name}"):
+                st.session_state.watched_maps.remove(map_name)
+                st.session_state.statuses.pop(map_name, None)
+                st.rerun()
+
+st.caption(f"Last checked: {st.session_state.last_checked_at or 'not yet'}")
+if st.session_state.last_error:
+    st.error(f"Last error: {st.session_state.last_error}")
+
+st.subheader("Recent changes")
+if st.session_state.events:
+    for event in st.session_state.events[:10]:
+        st.write(f"{event['map']} became {event['status']} at {event['at']}")
+else:
+    st.caption("No changes yet.")
