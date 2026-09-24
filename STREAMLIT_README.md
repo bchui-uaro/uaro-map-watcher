@@ -28,6 +28,6 @@ Each watched map has an **Alert below** threshold. A value of `2` alerts when th
 
 Watched maps and thresholds are saved in the browser's local storage, so refreshing the browser page preserves them without changing the URL. Settings are browser-specific; opening the app in a different browser will start with its default map.
 
-The uaRO page only displays maps that currently have players. Therefore, an empty map cannot be discovered from a fresh page load; maps disappear when empty. The app keeps watched maps in the dropdown after they disappear and includes `gef_dun02` by default.
+The uaRO page only displays maps that currently have players. Therefore, an empty map cannot be discovered from a fresh page load; maps disappear when empty. Use the manual map-name field to add an unlisted map. The app keeps watched maps in the dropdown after they disappear and includes `gef_dun02` by default.
 
 The free Streamlit service keeps state in the current app session. If the app sleeps or restarts, monitoring returns to OFF and watched maps reset to the default `gef_dun02`.

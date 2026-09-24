@@ -383,7 +383,29 @@ with add_col:
             save_preferences()
             st.rerun()
 
-st.caption("The list contains maps currently reported by uaRO plus maps already being watched. Empty maps are not listed by uaRO, so keep a watched map selected even when it disappears from the source page.")
+with st.form("manual_map_form", clear_on_submit=True):
+    typed_col, typed_add_col = st.columns([4, 1])
+    with typed_col:
+        typed_map_name = st.text_input(
+            "Or type a map name",
+            placeholder="Example: gef_dun02",
+            help="Use this for maps that are currently empty and therefore missing from uaRO's live list.",
+        )
+    with typed_add_col:
+        st.write("")
+        typed_submitted = st.form_submit_button("Add typed map", use_container_width=True)
+    if typed_submitted:
+        typed_map_name = typed_map_name.strip()
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", typed_map_name):
+            st.error("Use letters, numbers, underscores, or hyphens only.")
+        elif typed_map_name not in st.session_state.watched_maps:
+            st.session_state.watched_maps.append(typed_map_name)
+            st.session_state.map_options = sorted(set(st.session_state.map_options) | {typed_map_name})
+            st.session_state.thresholds.setdefault(typed_map_name, 1)
+            save_preferences()
+            st.rerun()
+
+st.caption("The dropdown contains maps currently reported by uaRO. Use the manual field to add an empty or unlisted map; watched maps remain available after they disappear from the source page.")
 if st.session_state.get("map_list_message"):
     st.caption(st.session_state.map_list_message)
 
