@@ -1,10 +1,13 @@
 import html
+import json
 import re
 from datetime import datetime, timezone
 from html.parser import HTMLParser
+from urllib.parse import unquote
 
 import requests
 import streamlit as st
+from streamlit_local_storage import LocalStorage
 from streamlit_autorefresh import st_autorefresh
 
 
@@ -96,6 +99,62 @@ def event_kind(event):
     return "below" if event.get("status") in {"empty", "below_threshold"} else "recovered"
 
 
+PREFERENCES_KEY = "uaro_map_watcher_preferences"
+
+
+def decode_preferences(raw):
+    try:
+        data = json.loads(raw)
+        watched_maps = [
+            name for name in data.get("watched_maps", [])
+            if re.fullmatch(r"[A-Za-z0-9_-]+", name)
+        ]
+        thresholds = {
+            name: max(1, int(value))
+            for name, value in data.get("thresholds", {}).items()
+            if re.fullmatch(r"[A-Za-z0-9_-]+", name)
+        }
+        return watched_maps, thresholds
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None, {}
+
+
+def load_saved_preferences():
+    stored = browser_storage.getItem(PREFERENCES_KEY, key="load_preferences")
+    if stored not in (None, ""):
+        watched_maps, thresholds = decode_preferences(stored)
+        if watched_maps is not None:
+            return watched_maps, thresholds
+
+    # One-time fallback for users upgrading from the URL-persistence version.
+    saved_maps = st.query_params.get("maps")
+    if saved_maps is None:
+        return None, {}
+    watched_maps = [
+        name for name in saved_maps.split(",")
+        if re.fullmatch(r"[A-Za-z0-9_-]+", name)
+    ]
+    thresholds = {}
+    for item in st.query_params.get("thresholds", "").split(";"):
+        if ":" not in item:
+            continue
+        encoded_name, raw_value = item.rsplit(":", 1)
+        name = unquote(encoded_name)
+        if re.fullmatch(r"[A-Za-z0-9_-]+", name) and raw_value.isdigit():
+            thresholds[name] = max(1, int(raw_value))
+    return watched_maps, thresholds
+
+
+def save_preferences():
+    browser_storage.setItem(
+        PREFERENCES_KEY,
+        json.dumps({
+            "watched_maps": st.session_state.watched_maps,
+            "thresholds": st.session_state.thresholds,
+        }),
+    )
+
+
 def check_maps():
     maps = fetch_maps(st.session_state.map_url)
     st.session_state.map_options = sorted(set(st.session_state.map_options) | set(maps))
@@ -139,11 +198,12 @@ def check_maps():
 
 
 def initialize():
+    saved_maps, saved_thresholds = load_saved_preferences()
     defaults = {
-        "watched_maps": ["gef_dun02"],
+        "watched_maps": saved_maps if saved_maps is not None else ["gef_dun02"],
         "statuses": {},
         "events": [],
-        "thresholds": {"gef_dun02": 1},
+        "thresholds": {"gef_dun02": 1, **saved_thresholds},
         "monitoring": False,
         "last_checked_at": "",
         "last_error": "",
@@ -164,6 +224,7 @@ def initialize():
 
 
 st.set_page_config(page_title="uaRO Map Watcher", page_icon="🎮", layout="centered")
+browser_storage = LocalStorage()
 initialize()
 
 access_token = read_secret("ACCESS_TOKEN", "")
@@ -311,6 +372,7 @@ with add_col:
         if map_name not in st.session_state.watched_maps:
             st.session_state.watched_maps.append(map_name)
             st.session_state.thresholds.setdefault(map_name, 1)
+            save_preferences()
             st.rerun()
 
 st.caption("The list contains maps currently reported by uaRO plus maps already being watched. Empty maps are not listed by uaRO, so keep a watched map selected even when it disappears from the source page.")
@@ -345,6 +407,8 @@ else:
                 label_visibility="collapsed",
             )
             st.session_state.thresholds[map_name] = int(new_threshold)
+            if int(new_threshold) != threshold:
+                save_preferences()
         with col4:
             if not status:
                 label, css = "WAITING", "status-waiting"
@@ -358,6 +422,7 @@ else:
                 st.session_state.watched_maps.remove(map_name)
                 st.session_state.statuses.pop(map_name, None)
                 st.session_state.thresholds.pop(map_name, None)
+                save_preferences()
                 st.rerun()
 
 st.caption(f"Last checked: {st.session_state.last_checked_at or 'not yet'}")

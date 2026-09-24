@@ -26,6 +26,8 @@ The app starts with monitoring OFF. Use the sidebar to enter two intervals: the 
 
 Each watched map has an **Alert below** threshold. A value of `2` alerts when the map has `0` or `1` player and sends a recovery message when it reaches `2` or more. The default value is `1`, which preserves empty-map-only alerts.
 
+Watched maps and thresholds are saved in the browser's local storage, so refreshing the browser page preserves them without changing the URL. Settings are browser-specific; opening the app in a different browser will start with its default map.
+
 The uaRO page only displays maps that currently have players. Therefore, an empty map cannot be discovered from a fresh page load; maps disappear when empty. The app keeps watched maps in the dropdown after they disappear and includes `gef_dun02` by default.
 
 The free Streamlit service keeps state in the current app session. If the app sleeps or restarts, monitoring returns to OFF and watched maps reset to the default `gef_dun02`.
