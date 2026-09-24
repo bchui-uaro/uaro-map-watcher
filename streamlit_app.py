@@ -120,7 +120,11 @@ def decode_preferences(raw):
 
 
 def load_saved_preferences():
-    stored = browser_storage.getItem(PREFERENCES_KEY, key="load_preferences")
+    try:
+        # streamlit-local-storage 0.0.25 accepts only the storage key here.
+        stored = browser_storage.getItem(PREFERENCES_KEY)
+    except Exception:
+        stored = None
     if stored not in (None, ""):
         watched_maps, thresholds = decode_preferences(stored)
         if watched_maps is not None:
@@ -146,13 +150,17 @@ def load_saved_preferences():
 
 
 def save_preferences():
-    browser_storage.setItem(
-        PREFERENCES_KEY,
-        json.dumps({
-            "watched_maps": st.session_state.watched_maps,
-            "thresholds": st.session_state.thresholds,
-        }),
-    )
+    try:
+        browser_storage.setItem(
+            PREFERENCES_KEY,
+            json.dumps({
+                "watched_maps": st.session_state.watched_maps,
+                "thresholds": st.session_state.thresholds,
+            }),
+        )
+    except Exception:
+        # Storage is a convenience; the app should still run if a browser blocks it.
+        pass
 
 
 def check_maps():
