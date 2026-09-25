@@ -1,9 +1,10 @@
 import html
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 from urllib.parse import unquote
+from zoneinfo import ZoneInfo
 
 import requests
 import streamlit as st
@@ -13,6 +14,7 @@ from streamlit_autorefresh import st_autorefresh
 
 DEFAULT_MAP_URL = "https://uaro.net/cp/?module=character&action=mapstats"
 TIME_UNITS = {"seconds": 1, "minutes": 60, "hours": 3600}
+PACIFIC = ZoneInfo("America/Los_Angeles")
 
 
 class MapTableParser(HTMLParser):
@@ -89,7 +91,13 @@ def send_discord(webhook_url, message):
 
 
 def now_text():
-    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    return datetime.now(PACIFIC).strftime("%Y-%m-%d %I:%M:%S %p %Z")
+
+
+def next_check_text(seconds):
+    return (datetime.now(timezone.utc) + timedelta(seconds=seconds)).astimezone(PACIFIC).strftime(
+        "%Y-%m-%d %I:%M:%S %p %Z"
+    )
 
 
 def event_kind(event):
@@ -195,13 +203,22 @@ def check_maps():
             message = f"🚨 **{event['map']} is below its player threshold** — {event['players']} player(s), threshold is {event['threshold']}."
         else:
             message = f"✅ **{event['map']} recovered** — {event['players']} player(s), threshold is {event['threshold']}."
-        send_discord(st.session_state.discord_webhook_url, message)
+        if st.session_state.discord_alerts_enabled:
+            send_discord(st.session_state.discord_webhook_url, message)
 
     st.session_state.last_check_had_empty = any(
         st.session_state.statuses[name]["alerting"]
         for name in st.session_state.watched_maps
     )
     st.session_state.last_checked_at = timestamp
+    next_interval = (
+        st.session_state.empty_delay_seconds
+        if st.session_state.empty_delay_enabled and st.session_state.last_check_had_empty
+        else st.session_state.normal_interval_seconds
+    )
+    st.session_state.next_check_at = (
+        next_check_text(next_interval) if st.session_state.monitoring else ""
+    )
     st.session_state.last_error = ""
 
 
@@ -214,6 +231,7 @@ def initialize():
         "thresholds": {"gef_dun02": 1, **saved_thresholds},
         "monitoring": False,
         "last_checked_at": "",
+        "next_check_at": "",
         "last_error": "",
         "map_url": read_secret("MAP_URL", DEFAULT_MAP_URL),
         "poll_interval": max(30, int(read_secret("POLL_INTERVAL_SECONDS", "60"))),
@@ -223,8 +241,9 @@ def initialize():
         "empty_delay_unit": "minutes",
         "empty_delay_enabled": True,
         "last_check_had_empty": False,
-        "dark_mode": True,
+        "dark_mode": False,
         "discord_webhook_url": read_secret("DISCORD_WEBHOOK_URL", ""),
+        "discord_alerts_enabled": True,
         "map_options": ["gef_dun02"],
     }
     for key, value in defaults.items():
@@ -245,6 +264,11 @@ if access_token and provided_token != access_token:
 with st.sidebar:
     st.header("Settings")
     st.session_state.dark_mode = st.toggle("Dark mode", value=st.session_state.dark_mode)
+    st.session_state.discord_alerts_enabled = st.toggle(
+        "Discord alerts",
+        value=st.session_state.discord_alerts_enabled,
+        help="Turn this off to continue checking maps without sending Discord messages.",
+    )
     st.markdown(f"[Open original uaRO map page]({st.session_state.map_url})")
     st.divider()
     st.subheader("Monitoring intervals")
@@ -318,6 +342,9 @@ if st.session_state.dark_mode:
         .status-alert { background:#7f1d1d; color:#fecaca !important; }
         .status-waiting { background:#334155; color:#e2e8f0 !important; }
         .status-header { color:#cbd5e1 !important; font-size:.75rem; font-weight:700; text-transform:uppercase; }
+        .status-times { color:#cbd5e1; font-size:.68rem; line-height:1.35; text-align:right; padding-top:.35rem; white-space:nowrap; }
+        .status-map { font-weight:700; font-size:.9rem; line-height:2.1rem; }
+        .status-players { font-size:.9rem; line-height:2.1rem; }
         </style>""",
         unsafe_allow_html=True,
     )
@@ -361,7 +388,7 @@ if st.session_state.monitoring:
 else:
     st.info("Monitoring OFF — no uaRO checks are running.")
 
-refresh_col, map_col, add_col = st.columns([1.2, 2.5, 1.2])
+refresh_col, map_col, add_col = st.columns([1.1, 3.2, 0.9])
 with refresh_col:
     if st.button("↻ Refresh map list", use_container_width=True):
         try:
@@ -372,60 +399,58 @@ with refresh_col:
             st.session_state.map_list_message = f"Could not load map names: {error}"
 with map_col:
     map_options = sorted(set(st.session_state.map_options) | set(st.session_state.watched_maps))
-    map_name = st.selectbox("Map name", map_options, disabled=not map_options)
+    selected_map = st.selectbox(
+        "Add map",
+        map_options,
+        index=None,
+        placeholder="Select a map or type a map name",
+        accept_new_options=True,
+        key="map_picker",
+        help="Choose a map from the list or type an unlisted map name.",
+        disabled=not map_options,
+    )
 with add_col:
     st.write("")
     st.write("")
-    if st.button("Add map", use_container_width=True, disabled=not map_options):
-        if map_name not in st.session_state.watched_maps:
-            st.session_state.watched_maps.append(map_name)
-            st.session_state.thresholds.setdefault(map_name, 1)
-            save_preferences()
-            st.rerun()
-
-with st.form("manual_map_form", clear_on_submit=True):
-    typed_col, typed_add_col = st.columns([4, 1])
-    with typed_col:
-        typed_map_name = st.text_input(
-            "Or type a map name",
-            placeholder="Example: gef_dun02",
-            help="Use this for maps that are currently empty and therefore missing from uaRO's live list.",
-        )
-    with typed_add_col:
-        st.write("")
-        typed_submitted = st.form_submit_button("Add typed map", use_container_width=True)
-    if typed_submitted:
-        typed_map_name = typed_map_name.strip()
-        if not re.fullmatch(r"[A-Za-z0-9_-]+", typed_map_name):
+    if st.button("Add", use_container_width=True, disabled=not selected_map):
+        selected_map = selected_map.strip()
+        if not re.fullmatch(r"[A-Za-z0-9_-]+", selected_map):
             st.error("Use letters, numbers, underscores, or hyphens only.")
-        elif typed_map_name not in st.session_state.watched_maps:
-            st.session_state.watched_maps.append(typed_map_name)
-            st.session_state.map_options = sorted(set(st.session_state.map_options) | {typed_map_name})
-            st.session_state.thresholds.setdefault(typed_map_name, 1)
+        elif selected_map not in st.session_state.watched_maps:
+            st.session_state.watched_maps.append(selected_map)
+            st.session_state.map_options = sorted(set(st.session_state.map_options) | {selected_map})
+            st.session_state.thresholds.setdefault(selected_map, 1)
             save_preferences()
             st.rerun()
+        elif selected_map in st.session_state.watched_maps:
+            st.info(f"Already watching {selected_map}.")
 
-st.caption("The dropdown contains maps currently reported by uaRO. Use the manual field to add an empty or unlisted map; watched maps remain available after they disappear from the source page.")
+st.caption("Choose a map from the list or type an unlisted name. Watched maps remain available after they disappear from uaRO.")
 if st.session_state.get("map_list_message"):
     st.caption(st.session_state.map_list_message)
 
-st.subheader("Current status")
+status_title, status_time = st.columns([1.6, 2.4])
+with status_title:
+    st.markdown("#### Current status")
+with status_time:
+    last_check = st.session_state.last_checked_at or "not yet"
+    next_check = st.session_state.next_check_at if st.session_state.monitoring else "not scheduled"
+    st.markdown(
+        f'<div class="status-times">Last: {last_check}<br>Next: {next_check}</div>',
+        unsafe_allow_html=True,
+    )
 if not st.session_state.watched_maps:
     st.caption("No maps are being watched.")
 else:
-    header = st.columns([2.2, 1.0, 1.25, 0.8, 0.45])
-    for column, label in zip(header, ["Map", "Players", "Alert below", "State", ""]):
-        with column:
-            st.markdown(f'<span class="status-header">{label}</span>', unsafe_allow_html=True)
     for map_name in st.session_state.watched_maps:
         status = st.session_state.statuses.get(map_name, {})
         threshold = int(st.session_state.thresholds.get(map_name, 1))
         players = status.get("players", "—")
-        col1, col2, col3, col4, col5 = st.columns([2.2, 1.0, 1.25, 0.8, 0.45])
+        col1, col2, col3, col4, col5 = st.columns([2.1, 0.75, 1.0, 0.7, 0.25])
         with col1:
-            st.write(f"**{map_name}**")
+            st.markdown(f'<span class="status-map">{map_name}</span>', unsafe_allow_html=True)
         with col2:
-            st.write(str(players))
+            st.markdown(f'<span class="status-players">{players}</span>', unsafe_allow_html=True)
         with col3:
             new_threshold = st.number_input(
                 "Threshold",
@@ -455,7 +480,6 @@ else:
                 save_preferences()
                 st.rerun()
 
-st.caption(f"Last checked: {st.session_state.last_checked_at or 'not yet'}")
 if st.session_state.last_error:
     st.error(f"Last error: {st.session_state.last_error}")
 
