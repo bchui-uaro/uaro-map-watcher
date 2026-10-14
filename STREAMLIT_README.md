@@ -4,7 +4,7 @@ A single-page app with the **Map Alerts** tracker in the sidebar and the **Zeny 
 
 ## Run locally
 
-1. Install the Python requirements from `requirements-streamlit.txt`.
+1. Install the Python requirements from `requirements-streamlit.txt`. This also installs the local component package that serves the built tracker assets.
 2. Build the React tracker once:
 
    ```sh
@@ -28,7 +28,7 @@ MAP_URL = "https://uaro.net/cp/?module=character&action=mapstats"
 
 ## Map Alerts
 
-Use **Check Page Now** in the sidebar to fetch current map populations. Watched maps and thresholds are stored in this browser. The uaRO page only lists maps with players, so you can also type a map name to watch it while empty. Current status and recent changes are held for the active Streamlit session.
+Use **Check Page Now** in the sidebar to fetch current map populations. Watched maps are stored in this browser. The table shows each map name and its latest checked player count. The uaRO page only lists maps with players, so you can also type a map name to watch it while empty.
 
 ## Zeny Tracker
 

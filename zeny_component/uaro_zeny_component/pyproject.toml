@@ -1,0 +1,7 @@
+[project]
+name = "uaro_zeny_component"
+version = "1.0.0"
+
+[[tool.streamlit.component.components]]
+name = "zeny_farm_tracker"
+asset_dir = "assets"
