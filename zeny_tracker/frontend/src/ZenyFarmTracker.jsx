@@ -484,6 +484,16 @@ export default function ZenyFarmTracker({ initialBackup }) {
     }
   };
 
+  const addTimerMinutes = (minutes) => {
+    const newMs = elapsedMs + minutes * 60 * 1000;
+    if (running) {
+      setAccumulated(newMs - (Date.now() - startedAt));
+      setNow(Date.now());
+    } else {
+      setAccumulated(newMs);
+    }
+  };
+
   const addLap = () => {
     setLaps([...laps, { id: uid(), ms: elapsedMs }]);
   };
@@ -1361,7 +1371,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
     setExpandedHistoryId(mergedEntry.id);
   };
 
-  const MAP_CHART_COLORS = ["#e8b923", "#4fd1c5", "#d1495b", "#8b7fd6", "#5ec26a", "#e08f4f", "#5aa9e6", "#c968c9"];
+  const MAP_CHART_COLORS = ["#ff4b4b", "#ff4b4b", "#dc3545", "#7c3aed", "#16a34a", "#d97706", "#2563eb", "#a21caf"];
   const chartMapNames = useMemo(() => Array.from(new Set(history.map((h) => h.mapName || "Unknown"))), [history]);
   const mapColorFor = (name) => MAP_CHART_COLORS[chartMapNames.indexOf(name) % MAP_CHART_COLORS.length];
 
@@ -1436,35 +1446,35 @@ export default function ZenyFarmTracker({ initialBackup }) {
     return (
       <div
         style={{
-          background: "#1c1830",
-          border: "1px solid #3a3358",
+          background: "#f3f4f6",
+          border: "1px solid #d1d5db",
           borderRadius: "6px",
           padding: "8px 10px",
           fontSize: "0.75rem",
           minWidth: "150px",
         }}
       >
-        <div style={{ color: "#a89fc4", marginBottom: "4px" }}>{point.fullDate}</div>
-        <div style={{ color: "#f4d675", fontFamily: "ui-monospace, monospace", fontWeight: 600 }}>
-          {fmtZeny(point.totalZeny)} z <span style={{ color: "#655c85", fontWeight: 400, fontSize: "0.68rem" }}>main</span>
+        <div style={{ color: "#4b5563", marginBottom: "4px" }}>{point.fullDate}</div>
+        <div style={{ color: "#dc3545", fontFamily: "ui-monospace, monospace", fontWeight: 600 }}>
+          {fmtZeny(point.totalZeny)} z <span style={{ color: "#6b7280", fontWeight: 400, fontSize: "0.68rem" }}>main</span>
         </div>
         {point.totalExtraZeny > 0 && (
-          <div style={{ color: "#4fd1c5", fontFamily: "ui-monospace, monospace", marginBottom: "2px", fontSize: "0.72rem" }}>
+          <div style={{ color: "#ff4b4b", fontFamily: "ui-monospace, monospace", marginBottom: "2px", fontSize: "0.72rem" }}>
             +{fmtZeny(point.totalExtraZeny)} z extra
           </div>
         )}
-        <div style={{ color: "#4fd1c5", fontFamily: "ui-monospace, monospace", marginBottom: "2px" }}>
+        <div style={{ color: "#ff4b4b", fontFamily: "ui-monospace, monospace", marginBottom: "2px" }}>
           {fmtTime(point.totalDurationMs)} farmed
         </div>
-        <div style={{ color: "#a89fc4", fontFamily: "ui-monospace, monospace", marginBottom: splitByMap ? "6px" : 0 }}>
+        <div style={{ color: "#4b5563", fontFamily: "ui-monospace, monospace", marginBottom: splitByMap ? "6px" : 0 }}>
           {fmtZeny(point.zenyPerHr)} z/hr avg
         </div>
         {splitByMap && (
-          <div style={{ borderTop: "1px solid #241f3d", paddingTop: "4px", display: "flex", flexDirection: "column", gap: "2px" }}>
+          <div style={{ borderTop: "1px solid #eef0f3", paddingTop: "4px", display: "flex", flexDirection: "column", gap: "2px" }}>
             {Object.entries(point.byMap).map(([name, v]) => (
               <div key={name} className="flex items-center justify-between gap-3">
                 <span style={{ color: mapColorFor(name), fontSize: "0.7rem" }}>{name}</span>
-                <span style={{ color: "#ede7d9", fontFamily: "ui-monospace, monospace", fontSize: "0.7rem" }}>
+                <span style={{ color: "#31333f", fontFamily: "ui-monospace, monospace", fontSize: "0.7rem" }}>
                   {fmtZeny(v.zeny)}z · {fmtTime(v.durationMs)}
                 </span>
               </div>
@@ -1487,17 +1497,17 @@ export default function ZenyFarmTracker({ initialBackup }) {
       {(h[listKey] || []).length > 0 && (
         <table className="w-full mb-1.5" style={{ borderCollapse: "collapse" }}>
           <thead>
-            <tr style={{ background: "#241f3d" }}>
-              <th className="text-left px-2 py-1" style={{ fontSize: "0.62rem", letterSpacing: "0.1em", color: "#a89fc4", textTransform: "uppercase", fontWeight: 500 }}>
+            <tr style={{ background: "#eef0f3" }}>
+              <th className="text-left px-2 py-1" style={{ fontSize: "0.62rem", letterSpacing: "0.1em", color: "#4b5563", textTransform: "uppercase", fontWeight: 500 }}>
                 Item
               </th>
-              <th className="text-left px-2 py-1" style={{ fontSize: "0.62rem", letterSpacing: "0.1em", color: "#a89fc4", textTransform: "uppercase", fontWeight: 500, width: "70px" }}>
+              <th className="text-left px-2 py-1" style={{ fontSize: "0.62rem", letterSpacing: "0.1em", color: "#4b5563", textTransform: "uppercase", fontWeight: 500, width: "70px" }}>
                 Qty
               </th>
-              <th className="text-left px-2 py-1" style={{ fontSize: "0.62rem", letterSpacing: "0.1em", color: "#a89fc4", textTransform: "uppercase", fontWeight: 500, width: "90px" }}>
+              <th className="text-left px-2 py-1" style={{ fontSize: "0.62rem", letterSpacing: "0.1em", color: "#4b5563", textTransform: "uppercase", fontWeight: 500, width: "90px" }}>
                 Sell
               </th>
-              <th className="text-left px-2 py-1" style={{ fontSize: "0.62rem", letterSpacing: "0.1em", color: "#a89fc4", textTransform: "uppercase", fontWeight: 500, width: "100px" }}>
+              <th className="text-left px-2 py-1" style={{ fontSize: "0.62rem", letterSpacing: "0.1em", color: "#4b5563", textTransform: "uppercase", fontWeight: 500, width: "100px" }}>
                 Total
               </th>
               <th className="px-2 py-1" style={{ width: "28px" }} />
@@ -1505,14 +1515,14 @@ export default function ZenyFarmTracker({ initialBackup }) {
           </thead>
           <tbody>
             {(h[listKey] || []).map((it, idx) => (
-              <tr key={it.id} style={{ background: idx % 2 === 0 ? "transparent" : "#1c1830", borderTop: "1px solid #241f3d" }}>
+              <tr key={it.id} style={{ background: idx % 2 === 0 ? "transparent" : "#f3f4f6", borderTop: "1px solid #eef0f3" }}>
                 <td className="px-2 py-1">
                   <input
                     value={it.name}
                     onChange={(e) => updateHistoryItem(h.id, listKey, it.id, "name", e.target.value)}
                     placeholder="Item name"
                     className="bg-transparent outline-none w-full"
-                    style={{ color: "#ede7d9", fontSize: "0.8rem" }}
+                    style={{ color: "#31333f", fontSize: "0.8rem" }}
                   />
                 </td>
                 <td className="px-2 py-1">
@@ -1523,7 +1533,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                     onChange={(e) => updateHistoryItem(h.id, listKey, it.id, "qty", parseFloat(e.target.value) || 0)}
                     placeholder="0"
                     className="bg-transparent outline-none w-full"
-                    style={{ color: "#ede7d9", fontFamily: "ui-monospace, monospace", fontSize: "0.8rem" }}
+                    style={{ color: "#31333f", fontFamily: "ui-monospace, monospace", fontSize: "0.8rem" }}
                   />
                 </td>
                 <td className="px-2 py-1">
@@ -1534,14 +1544,14 @@ export default function ZenyFarmTracker({ initialBackup }) {
                     onChange={(e) => updateHistoryItem(h.id, listKey, it.id, "sell", parseFloat(e.target.value) || 0)}
                     placeholder="0"
                     className="bg-transparent outline-none w-full"
-                    style={{ color: "#a89fc4", fontFamily: "ui-monospace, monospace", fontSize: "0.8rem" }}
+                    style={{ color: "#4b5563", fontFamily: "ui-monospace, monospace", fontSize: "0.8rem" }}
                   />
                 </td>
-                <td className="px-2 py-1" style={{ fontFamily: "ui-monospace, monospace", color: "#f4d675", fontSize: "0.8rem" }}>
+                <td className="px-2 py-1" style={{ fontFamily: "ui-monospace, monospace", color: "#dc3545", fontSize: "0.8rem" }}>
                   {fmtZeny((it.qty || 0) * (it.sell || 0))}
                 </td>
                 <td className="px-2 py-1">
-                  <button onClick={() => removeHistoryItem(h.id, listKey, it.id)} style={{ color: "#d1495b" }} title="Remove">
+                  <button onClick={() => removeHistoryItem(h.id, listKey, it.id)} style={{ color: "#dc3545" }} title="Remove">
                     <Trash2 size={13} />
                   </button>
                 </td>
@@ -1553,7 +1563,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
       <button
         onClick={() => addHistoryItem(h.id, listKey)}
         className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium"
-        style={{ background: "#241f3d", color: "#a89fc4", border: "1px solid #3a3358" }}
+        style={{ background: "#eef0f3", color: "#4b5563", border: "1px solid #d1d5db" }}
       >
         <Plus size={12} />
         {addLabel}
@@ -1759,8 +1769,8 @@ export default function ZenyFarmTracker({ initialBackup }) {
     <div
       className="min-h-screen w-full flex justify-center px-4 py-8"
       style={{
-        background: "radial-gradient(1200px 600px at 50% -10%, #241f3d 0%, #120f1c 55%, #0b0914 100%)",
-        color: "#ede7d9",
+        background: "linear-gradient(180deg, #ffffff 0%, #f6f7f9 100%)",
+        color: "#31333f",
         fontFamily: "'Segoe UI', ui-sans-serif, system-ui, sans-serif",
       }}
     >
@@ -1768,20 +1778,20 @@ export default function ZenyFarmTracker({ initialBackup }) {
         {/* Header */}
         <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
           <div className="flex items-center gap-3">
-            <Swords size={26} color="#e8b923" strokeWidth={1.75} />
+            <Swords size={26} color="#ff4b4b" strokeWidth={1.75} />
             <div>
               <h1
                 style={{
                   fontFamily: "Georgia, 'Times New Roman', serif",
                   letterSpacing: "0.12em",
                   fontSize: "1.6rem",
-                  color: "#f4d675",
+                  color: "#dc3545",
                   textTransform: "uppercase",
                 }}
               >
                 Zeny Farm Tracker
               </h1>
-              <p style={{ color: "#a89fc4", fontSize: "0.8rem", letterSpacing: "0.03em" }}>
+              <p style={{ color: "#4b5563", fontSize: "0.8rem", letterSpacing: "0.03em" }}>
                 Track your grind. Know your rate.
               </p>
             </div>
@@ -1790,7 +1800,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
             <button
               onClick={openExport}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium"
-              style={{ background: "#241f3d", color: "#a89fc4", border: "1px solid #3a3358" }}
+              style={{ background: "#eef0f3", color: "#4b5563", border: "1px solid #d1d5db" }}
               title="Export all your data as a backup file"
             >
               <Save size={12} />
@@ -1799,7 +1809,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
             <button
               onClick={openImport}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium"
-              style={{ background: "#241f3d", color: "#a89fc4", border: "1px solid #3a3358" }}
+              style={{ background: "#eef0f3", color: "#4b5563", border: "1px solid #d1d5db" }}
               title="Import a previously exported backup"
             >
               <MapPin size={12} />
@@ -1809,27 +1819,27 @@ export default function ZenyFarmTracker({ initialBackup }) {
         </div>
 
         {backupOpen && (
-          <div className="rounded-lg p-4 mb-6" style={{ background: "#1c1830", border: "1px solid #4fd1c5" }}>
+          <div className="rounded-lg p-4 mb-6" style={{ background: "#f3f4f6", border: "1px solid #ff4b4b" }}>
             <div className="flex items-center justify-between mb-1">
-              <span style={{ fontSize: "0.7rem", letterSpacing: "0.14em", color: "#4fd1c5", textTransform: "uppercase" }}>
+              <span style={{ fontSize: "0.7rem", letterSpacing: "0.14em", color: "#ff4b4b", textTransform: "uppercase" }}>
                 {backupMode === "export" ? "Export Data" : "Import Data"}
               </span>
-              <button onClick={closeBackup} style={{ color: "#a89fc4" }}>
+              <button onClick={closeBackup} style={{ color: "#4b5563" }}>
                 <X size={16} />
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-4 pb-3" style={{ borderBottom: "1px solid #241f3d" }}>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-4 pb-3" style={{ borderBottom: "1px solid #eef0f3" }}>
               {storageUsage.map((s) => {
                 const pct = (s.bytes / STORAGE_KEY_LIMIT) * 100;
                 return (
                   <div key={s.label} className="flex items-center gap-1.5" title={`${fmtBytes(s.bytes)} of 5MB limit`}>
-                    <span style={{ fontSize: "0.66rem", color: "#655c85" }}>{s.label}</span>
+                    <span style={{ fontSize: "0.66rem", color: "#6b7280" }}>{s.label}</span>
                     <span
                       style={{
                         fontSize: "0.66rem",
                         fontFamily: "ui-monospace, monospace",
-                        color: pct > 80 ? "#d1495b" : pct > 50 ? "#e8b923" : "#4fd1c5",
+                        color: pct > 80 ? "#dc3545" : pct > 50 ? "#ff4b4b" : "#ff4b4b",
                       }}
                     >
                       {fmtBytes(s.bytes)}
@@ -1841,7 +1851,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
 
             {backupMode === "export" ? (
               <>
-                <p style={{ fontSize: "0.72rem", color: "#655c85", marginBottom: "0.75rem" }}>
+                <p style={{ fontSize: "0.72rem", color: "#6b7280", marginBottom: "0.75rem" }}>
                   This bundles your current session, maps, history, default items, and monster data into one backup.
                   Download it (or copy the text), then open your <strong>published</strong> artifact and use{" "}
                   <strong>Import</strong> there to bring everything over.
@@ -1850,7 +1860,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                   <button
                     onClick={downloadExport}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-                    style={{ background: "#e8b923", color: "#1c1830" }}
+                    style={{ background: "#ff4b4b", color: "#f3f4f6" }}
                   >
                     <Save size={14} />
                     Download Backup File
@@ -1858,11 +1868,11 @@ export default function ZenyFarmTracker({ initialBackup }) {
                   <button
                     onClick={copyExportToClipboard}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-                    style={{ background: "#241f3d", color: "#a89fc4", border: "1px solid #3a3358" }}
+                    style={{ background: "#eef0f3", color: "#4b5563", border: "1px solid #d1d5db" }}
                   >
                     Copy to Clipboard
                   </button>
-                  {backupMessage && <span style={{ color: "#4fd1c5", fontSize: "0.78rem" }}>{backupMessage}</span>}
+                  {backupMessage && <span style={{ color: "#ff4b4b", fontSize: "0.78rem" }}>{backupMessage}</span>}
                 </div>
                 <textarea
                   readOnly
@@ -1871,9 +1881,9 @@ export default function ZenyFarmTracker({ initialBackup }) {
                   onFocus={(e) => e.target.select()}
                   className="w-full px-2.5 py-1.5 rounded-md outline-none text-xs"
                   style={{
-                    background: "#120f1c",
-                    border: "1px solid #3a3358",
-                    color: "#a89fc4",
+                    background: "#ffffff",
+                    border: "1px solid #d1d5db",
+                    color: "#4b5563",
                     fontFamily: "ui-monospace, monospace",
                     resize: "vertical",
                   }}
@@ -1881,7 +1891,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
               </>
             ) : (
               <>
-                <p style={{ fontSize: "0.72rem", color: "#655c85", marginBottom: "0.75rem" }}>
+                <p style={{ fontSize: "0.72rem", color: "#6b7280", marginBottom: "0.75rem" }}>
                   This will <strong>replace</strong> your current session, maps, history, default items, and
                   monster data here.
                 </p>
@@ -1896,14 +1906,14 @@ export default function ZenyFarmTracker({ initialBackup }) {
                   <button
                     onClick={() => importFileInputRef.current?.click()}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-                    style={{ background: "#e8b923", color: "#1c1830" }}
+                    style={{ background: "#ff4b4b", color: "#f3f4f6" }}
                   >
                     <Save size={14} />
                     Upload Backup File
                   </button>
-                  <span style={{ fontSize: "0.72rem", color: "#655c85" }}>— most reliable option</span>
+                  <span style={{ fontSize: "0.72rem", color: "#6b7280" }}>— most reliable option</span>
                 </div>
-                <p style={{ fontSize: "0.68rem", color: "#655c85", marginBottom: "0.4rem" }}>
+                <p style={{ fontSize: "0.68rem", color: "#6b7280", marginBottom: "0.4rem" }}>
                   Or paste the backup text directly:
                 </p>
                 <textarea
@@ -1913,9 +1923,9 @@ export default function ZenyFarmTracker({ initialBackup }) {
                   placeholder="Paste exported backup JSON here..."
                   className="w-full px-2.5 py-1.5 rounded-md outline-none text-xs mb-3"
                   style={{
-                    background: "#120f1c",
-                    border: "1px solid #3a3358",
-                    color: "#ede7d9",
+                    background: "#ffffff",
+                    border: "1px solid #d1d5db",
+                    color: "#31333f",
                     fontFamily: "ui-monospace, monospace",
                     resize: "vertical",
                   }}
@@ -1925,13 +1935,13 @@ export default function ZenyFarmTracker({ initialBackup }) {
                     onClick={applyImport}
                     disabled={!importText.trim()}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-                    style={{ background: "#4fd1c5", color: "#0b0914" }}
+                    style={{ background: "#ff4b4b", color: "#31333f" }}
                   >
                     <Save size={14} />
                     Import & Replace
                   </button>
                   {backupMessage && (
-                    <span style={{ color: backupMessage.startsWith("Import complete") ? "#4fd1c5" : "#d1495b", fontSize: "0.78rem" }}>
+                    <span style={{ color: backupMessage.startsWith("Import complete") ? "#ff4b4b" : "#dc3545", fontSize: "0.78rem" }}>
                       {backupMessage}
                     </span>
                   )}
@@ -1944,14 +1954,14 @@ export default function ZenyFarmTracker({ initialBackup }) {
         {storageOk === false && (
           <div
             className="flex items-start gap-2.5 rounded-lg p-3 mb-6"
-            style={{ background: "rgba(209,73,91,0.1)", border: "1px solid #d1495b" }}
+            style={{ background: "rgba(209,73,91,0.1)", border: "1px solid #dc3545" }}
           >
-            <TriangleAlert size={16} color="#d1495b" style={{ flexShrink: 0, marginTop: "1px" }} />
+            <TriangleAlert size={16} color="#dc3545" style={{ flexShrink: 0, marginTop: "1px" }} />
             <div>
-              <div style={{ color: "#f2a8b3", fontSize: "0.82rem", fontWeight: 600, marginBottom: "2px" }}>
+              <div style={{ color: "#991b1b", fontSize: "0.82rem", fontWeight: 600, marginBottom: "2px" }}>
                 Storage isn't saving right now
               </div>
-              <div style={{ color: "#d9a9b0", fontSize: "0.78rem", lineHeight: 1.4 }}>
+              <div style={{ color: "#7f1d1d", fontSize: "0.78rem", lineHeight: 1.4 }}>
                 Nothing you do here will be saved when this page closes. This usually means the artifact hasn't
                 been <strong>published</strong> yet — persistent storage only works on published artifacts. Publish
                 it, then reload this page to reconnect.
@@ -1970,11 +1980,11 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 className="flex items-center gap-1 rounded-t-md px-3 py-1.5 cursor-pointer"
                 onClick={() => selectMap(m)}
                 style={{
-                  background: dragOverMapId === m.id ? "#2a2450" : activeMapId === m.id ? "#1c1830" : "#241f3d",
+                  background: dragOverMapId === m.id ? "#e5e7eb" : activeMapId === m.id ? "#f3f4f6" : "#eef0f3",
                   border: `1px solid ${
-                    dragOverMapId === m.id ? "#4fd1c5" : activeMapId === m.id ? "#e8b923" : "#3a3358"
+                    dragOverMapId === m.id ? "#ff4b4b" : activeMapId === m.id ? "#ff4b4b" : "#d1d5db"
                   }`,
-                  borderBottom: activeMapId === m.id ? "1px solid #1c1830" : "1px solid #3a3358",
+                  borderBottom: activeMapId === m.id ? "1px solid #f3f4f6" : "1px solid #d1d5db",
                   marginBottom: "-1px",
                   opacity: dragMapId === m.id ? 0.4 : 1,
                   transition: "background 0.1s ease, border-color 0.1s ease",
@@ -1982,13 +1992,13 @@ export default function ZenyFarmTracker({ initialBackup }) {
               >
                 <div
                   onPointerDown={(e) => startMapDrag(e, m.id)}
-                  style={{ color: "#655c85", cursor: "grab", display: "flex", touchAction: "none" }}
+                  style={{ color: "#6b7280", cursor: "grab", display: "flex", touchAction: "none" }}
                   title="Drag to reorder"
                 >
                   <GripVertical size={12} />
                 </div>
-                <MapPin size={12} color={activeMapId === m.id ? "#e8b923" : "#a89fc4"} />
-                <span style={{ fontSize: "0.8rem", color: activeMapId === m.id ? "#f4d675" : "#a89fc4" }}>
+                <MapPin size={12} color={activeMapId === m.id ? "#ff4b4b" : "#4b5563"} />
+                <span style={{ fontSize: "0.8rem", color: activeMapId === m.id ? "#dc3545" : "#4b5563" }}>
                   {m.name}
                 </span>
                 <button
@@ -1996,7 +2006,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                     e.stopPropagation();
                     openEditMapForm(m);
                   }}
-                  style={{ color: "#655c85" }}
+                  style={{ color: "#6b7280" }}
                   title="Edit map"
                 >
                   <Pencil size={11} />
@@ -2006,7 +2016,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
             <button
               onClick={openNewMapForm}
               className="flex items-center gap-1 rounded-t-md px-3 py-1.5"
-              style={{ background: "#241f3d", border: "1px dashed #3a3358", color: "#a89fc4", fontSize: "0.8rem" }}
+              style={{ background: "#eef0f3", border: "1px dashed #d1d5db", color: "#4b5563", fontSize: "0.8rem" }}
             >
               <Plus size={13} />
               New Map
@@ -2014,39 +2024,39 @@ export default function ZenyFarmTracker({ initialBackup }) {
             <button
               onClick={openDefaultItemsForm}
               className="flex items-center gap-1 rounded-t-md px-3 py-1.5"
-              style={{ background: "#241f3d", border: "1px solid #3a3358", color: "#655c85", fontSize: "0.8rem" }}
+              style={{ background: "#eef0f3", border: "1px solid #d1d5db", color: "#6b7280", fontSize: "0.8rem" }}
               title="Set items that automatically pre-fill every new map you create"
             >
               <Pencil size={11} />
               Default Items
             </button>
           </div>
-          <div style={{ height: "1px", background: "#3a3358" }} />
+          <div style={{ height: "1px", background: "#d1d5db" }} />
         </div>
 
         {/* Map form */}
         {mapForm && (
-          <div className="rounded-lg p-4 mb-6" style={{ background: "#1c1830", border: "1px solid #e8b923" }}>
+          <div className="rounded-lg p-4 mb-6" style={{ background: "#f3f4f6", border: "1px solid #ff4b4b" }}>
             <div className="flex items-center justify-between mb-3">
-              <span style={{ fontSize: "0.7rem", letterSpacing: "0.14em", color: "#f4d675", textTransform: "uppercase" }}>
+              <span style={{ fontSize: "0.7rem", letterSpacing: "0.14em", color: "#dc3545", textTransform: "uppercase" }}>
                 {mapForm.mode === "edit" ? "Edit Map" : "New Map"}
               </span>
-              <button onClick={closeMapForm} style={{ color: "#a89fc4" }}>
+              <button onClick={closeMapForm} style={{ color: "#4b5563" }}>
                 <X size={16} />
               </button>
             </div>
             <div className="flex flex-col gap-1 mb-3">
-              <label style={{ fontSize: "0.68rem", color: "#a89fc4" }}>Map name</label>
+              <label style={{ fontSize: "0.68rem", color: "#4b5563" }}>Map name</label>
               <input
                 value={mapForm.name}
                 onChange={(e) => setMapForm({ ...mapForm, name: e.target.value })}
                 placeholder="e.g. Geffen Dungeon 3"
                 className="px-2.5 py-1.5 rounded-md outline-none text-sm"
-                style={{ background: "#120f1c", border: "1px solid #3a3358", color: "#ede7d9" }}
+                style={{ background: "#ffffff", border: "1px solid #d1d5db", color: "#31333f" }}
               />
             </div>
             <div className="flex flex-col gap-1 mb-3">
-              <label style={{ fontSize: "0.68rem", color: "#a89fc4" }}>
+              <label style={{ fontSize: "0.68rem", color: "#4b5563" }}>
                 Main items &amp; sell price — one per line ("Item Name  Price")
               </label>
               <textarea
@@ -2056,16 +2066,16 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 placeholder={"Blue Potion\t3720\nFire Wall\t1240\nSilver Robe\t4340"}
                 className="px-2.5 py-1.5 rounded-md outline-none text-sm"
                 style={{
-                  background: "#120f1c",
-                  border: "1px solid #3a3358",
-                  color: "#ede7d9",
+                  background: "#ffffff",
+                  border: "1px solid #d1d5db",
+                  color: "#31333f",
                   fontFamily: "ui-monospace, monospace",
                   resize: "vertical",
                 }}
               />
             </div>
             <div className="flex flex-col gap-1 mb-3">
-              <label style={{ fontSize: "0.68rem", color: "#a89fc4" }}>
+              <label style={{ fontSize: "0.68rem", color: "#4b5563" }}>
                 Extra items &amp; sell price — one per line (rare/bonus drops)
               </label>
               <textarea
@@ -2075,19 +2085,19 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 placeholder={"Hand of God\t50000\nOld Card Album\t120000"}
                 className="px-2.5 py-1.5 rounded-md outline-none text-sm"
                 style={{
-                  background: "#120f1c",
-                  border: "1px solid #3a3358",
-                  color: "#ede7d9",
+                  background: "#ffffff",
+                  border: "1px solid #d1d5db",
+                  color: "#31333f",
                   fontFamily: "ui-monospace, monospace",
                   resize: "vertical",
                 }}
               />
-              <span style={{ fontSize: "0.68rem", color: "#655c85" }}>
+              <span style={{ fontSize: "0.68rem", color: "#6b7280" }}>
                 Paste straight from a spreadsheet column — tabs, commas, or spaces all work.
               </span>
             </div>
             <div className="flex flex-col gap-1 mb-3">
-              <label style={{ fontSize: "0.68rem", color: "#a89fc4" }}>
+              <label style={{ fontSize: "0.68rem", color: "#4b5563" }}>
                 Costs — one per line (potions, repairs, scrolls, etc. bought while farming here)
               </label>
               <textarea
@@ -2097,9 +2107,9 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 placeholder={"Fly Wing\t30\nAloe Vera\t750"}
                 className="px-2.5 py-1.5 rounded-md outline-none text-sm"
                 style={{
-                  background: "#120f1c",
-                  border: "1px solid #3a3358",
-                  color: "#ede7d9",
+                  background: "#ffffff",
+                  border: "1px solid #d1d5db",
+                  color: "#31333f",
                   fontFamily: "ui-monospace, monospace",
                   resize: "vertical",
                 }}
@@ -2109,7 +2119,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
               <button
                 onClick={saveMapForm}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-                style={{ background: "#e8b923", color: "#1c1830" }}
+                style={{ background: "#ff4b4b", color: "#f3f4f6" }}
               >
                 <Save size={14} />
                 {mapForm.mode === "edit" ? "Save Changes" : "Create Map"}
@@ -2118,7 +2128,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 <button
                   onClick={() => deleteMap(mapForm.id)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-                  style={{ background: "#2a1420", color: "#d1495b", border: "1px solid #d1495b" }}
+                  style={{ background: "#fef2f2", color: "#dc3545", border: "1px solid #dc3545" }}
                 >
                   <Trash2 size={14} />
                   Delete Map
@@ -2130,27 +2140,27 @@ export default function ZenyFarmTracker({ initialBackup }) {
 
         {/* Default items form */}
         {defaultItemsForm && (
-          <div className="rounded-lg p-4 mb-6" style={{ background: "#1c1830", border: "1px solid #4fd1c5" }}>
+          <div className="rounded-lg p-4 mb-6" style={{ background: "#f3f4f6", border: "1px solid #ff4b4b" }}>
             <div className="flex items-center justify-between mb-1">
-              <span style={{ fontSize: "0.7rem", letterSpacing: "0.14em", color: "#4fd1c5", textTransform: "uppercase" }}>
+              <span style={{ fontSize: "0.7rem", letterSpacing: "0.14em", color: "#ff4b4b", textTransform: "uppercase" }}>
                 Default Items for New Maps
               </span>
-              <button onClick={closeDefaultItemsForm} style={{ color: "#a89fc4" }}>
+              <button onClick={closeDefaultItemsForm} style={{ color: "#4b5563" }}>
                 <X size={16} />
               </button>
             </div>
-            <p style={{ fontSize: "0.72rem", color: "#655c85", marginBottom: "0.75rem" }}>
+            <p style={{ fontSize: "0.72rem", color: "#6b7280", marginBottom: "0.75rem" }}>
               Whatever you set here automatically pre-fills the Main/Extras lists every time you click "New Map" —
               handy for items that show up on nearly every farming run (universal drops, common cards, etc.).
               You can still edit or clear them per map afterward.
             </p>
 
             <div className="mb-4 relative">
-              <label style={{ fontSize: "0.68rem", color: "#a89fc4", display: "block", marginBottom: "0.3rem" }}>
+              <label style={{ fontSize: "0.68rem", color: "#4b5563", display: "block", marginBottom: "0.3rem" }}>
                 Search to add an item (cards/equipment go to Extras automatically)
               </label>
               <div className="relative">
-                <Search size={14} color="#655c85" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }} />
+                <Search size={14} color="#6b7280" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }} />
                 <input
                   value={defaultItemQuery}
                   onChange={(e) => {
@@ -2160,15 +2170,15 @@ export default function ZenyFarmTracker({ initialBackup }) {
                   onFocus={() => setDefaultItemDropdownOpen(true)}
                   placeholder="Search item name..."
                   className="w-full pl-8 pr-3 py-2 rounded-md outline-none text-sm"
-                  style={{ background: "#120f1c", border: "1px solid #3a3358", color: "#ede7d9" }}
+                  style={{ background: "#ffffff", border: "1px solid #d1d5db", color: "#31333f" }}
                 />
                 {defaultItemDropdownOpen && (
                   <div
                     className="absolute left-0 right-0 mt-1 rounded-md overflow-hidden z-10"
-                    style={{ background: "#1c1830", border: "1px solid #3a3358", maxHeight: "220px", overflowY: "auto" }}
+                    style={{ background: "#f3f4f6", border: "1px solid #d1d5db", maxHeight: "220px", overflowY: "auto" }}
                   >
                     {filteredDefaultItems.length === 0 ? (
-                      <div className="px-3 py-3 text-center" style={{ color: "#655c85", fontSize: "0.8rem" }}>
+                      <div className="px-3 py-3 text-center" style={{ color: "#6b7280", fontSize: "0.8rem" }}>
                         No matching items.
                       </div>
                     ) : (
@@ -2176,11 +2186,11 @@ export default function ZenyFarmTracker({ initialBackup }) {
                         <div
                           key={it.name.toLowerCase()}
                           className="flex items-center justify-between px-3 py-2 cursor-pointer"
-                          style={{ borderTop: "1px solid #241f3d" }}
+                          style={{ borderTop: "1px solid #eef0f3" }}
                           onClick={() => addItemToDefaults(it)}
                         >
-                          <span style={{ fontSize: "0.85rem", color: "#ede7d9" }}>{it.name}</span>
-                          <span style={{ fontSize: "0.75rem", color: "#655c85", fontFamily: "ui-monospace, monospace" }}>
+                          <span style={{ fontSize: "0.85rem", color: "#31333f" }}>{it.name}</span>
+                          <span style={{ fontSize: "0.75rem", color: "#6b7280", fontFamily: "ui-monospace, monospace" }}>
                             {fmtZeny(it.sell)}z base
                           </span>
                         </div>
@@ -2195,7 +2205,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
             </div>
 
             <div className="flex flex-col gap-1 mb-3">
-              <label style={{ fontSize: "0.68rem", color: "#a89fc4" }}>
+              <label style={{ fontSize: "0.68rem", color: "#4b5563" }}>
                 Default main items — one per line ("Item Name  Price")
               </label>
               <textarea
@@ -2205,16 +2215,16 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 placeholder={"Jellopy\t6"}
                 className="px-2.5 py-1.5 rounded-md outline-none text-sm"
                 style={{
-                  background: "#120f1c",
-                  border: "1px solid #3a3358",
-                  color: "#ede7d9",
+                  background: "#ffffff",
+                  border: "1px solid #d1d5db",
+                  color: "#31333f",
                   fontFamily: "ui-monospace, monospace",
                   resize: "vertical",
                 }}
               />
             </div>
             <div className="flex flex-col gap-1 mb-3">
-              <label style={{ fontSize: "0.68rem", color: "#a89fc4" }}>Default extra items — one per line</label>
+              <label style={{ fontSize: "0.68rem", color: "#4b5563" }}>Default extra items — one per line</label>
               <textarea
                 value={defaultItemsForm.extraText}
                 onChange={(e) => setDefaultItemsForm({ ...defaultItemsForm, extraText: e.target.value })}
@@ -2222,9 +2232,9 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 placeholder={"Old Card Album\t120000"}
                 className="px-2.5 py-1.5 rounded-md outline-none text-sm"
                 style={{
-                  background: "#120f1c",
-                  border: "1px solid #3a3358",
-                  color: "#ede7d9",
+                  background: "#ffffff",
+                  border: "1px solid #d1d5db",
+                  color: "#31333f",
                   fontFamily: "ui-monospace, monospace",
                   resize: "vertical",
                 }}
@@ -2234,7 +2244,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
               <button
                 onClick={saveDefaultItemsForm}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-                style={{ background: "#4fd1c5", color: "#0b0914" }}
+                style={{ background: "#ff4b4b", color: "#31333f" }}
               >
                 <Save size={14} />
                 Save Defaults
@@ -2247,17 +2257,17 @@ export default function ZenyFarmTracker({ initialBackup }) {
         <div
           className="rounded-lg p-5 flex flex-col items-center justify-center mb-6"
           style={{
-            background: "#1c1830",
-            border: `1px solid ${running ? "#4fd1c5" : "#3a3358"}`,
-            boxShadow: running ? "0 0 24px -4px rgba(79,209,197,0.35)" : "none",
+            background: "#f3f4f6",
+            border: `1px solid ${running ? "#ff4b4b" : "#d1d5db"}`,
+            boxShadow: running ? "0 0 24px -4px rgba(255,75,75,0.18)" : "none",
             transition: "all 0.3s ease",
             fontFamily: "'JetBrains Mono', ui-monospace, Menlo, monospace",
           }}
         >
-          <div style={{ fontSize: "0.65rem", letterSpacing: "0.18em", color: "#a89fc4", textTransform: "uppercase", marginBottom: "0.4rem" }}>
+          <div style={{ fontSize: "0.65rem", letterSpacing: "0.18em", color: "#4b5563", textTransform: "uppercase", marginBottom: "0.4rem" }}>
             Session Time
           </div>
-          <div style={{ fontSize: "2.1rem", fontWeight: 600, color: running ? "#4fd1c5" : "#ede7d9", letterSpacing: "0.02em" }}>
+          <div style={{ fontSize: "2.1rem", fontWeight: 600, color: running ? "#ff4b4b" : "#31333f", letterSpacing: "0.02em" }}>
             {fmtTime(elapsedMs)}
           </div>
           <div className="flex items-center gap-1.5 mt-3">
@@ -2269,17 +2279,27 @@ export default function ZenyFarmTracker({ initialBackup }) {
                   value={msToHMS(elapsedMs)[field]}
                   onChange={(e) => updateSessionTime(field, e.target.value)}
                   className="px-2 py-1 rounded-md outline-none text-sm text-center"
-                  style={{ width: "52px", background: "#120f1c", border: "1px solid #3a3358", color: "#ede7d9" }}
+                  style={{ width: "52px", background: "#ffffff", border: "1px solid #d1d5db", color: "#31333f" }}
                 />
-                <span style={{ fontSize: "0.7rem", color: "#655c85" }}>{field}</span>
+                <span style={{ fontSize: "0.7rem", color: "#6b7280" }}>{field}</span>
               </div>
             ))}
           </div>
-          <div className="flex gap-2 mt-4">
+          <div className="flex gap-2 mt-4 flex-wrap justify-center">
+            {[10, 20, 30].map((minutes) => (
+              <button
+                key={minutes}
+                onClick={() => addTimerMinutes(minutes)}
+                className="px-3 py-1.5 rounded-md text-sm font-medium"
+                style={{ background: "#ffffff", color: "#ff4b4b", border: "1px solid #ff4b4b" }}
+              >
+                +{minutes} min
+              </button>
+            ))}
             <button
               onClick={toggleTimer}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-              style={{ background: running ? "#d1495b" : "#e8b923", color: running ? "#fff" : "#1c1830" }}
+              style={{ background: running ? "#dc3545" : "#ff4b4b", color: running ? "#fff" : "#f3f4f6" }}
             >
               {running ? <Pause size={14} /> : <Play size={14} />}
               {running ? "Pause" : "Start"}
@@ -2287,7 +2307,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
             <button
               onClick={addLap}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-              style={{ background: "#241f3d", color: "#4fd1c5", border: "1px solid #4fd1c5" }}
+              style={{ background: "#eef0f3", color: "#ff4b4b", border: "1px solid #ff4b4b" }}
             >
               <Flag size={14} />
               Lap
@@ -2295,7 +2315,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
             <button
               onClick={resetTimer}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-              style={{ background: "#241f3d", color: "#a89fc4", border: "1px solid #3a3358" }}
+              style={{ background: "#eef0f3", color: "#4b5563", border: "1px solid #d1d5db" }}
             >
               <RotateCcw size={14} />
               Reset
@@ -2303,12 +2323,12 @@ export default function ZenyFarmTracker({ initialBackup }) {
           </div>
 
           {laps.length > 0 && (
-            <div className="w-full mt-4" style={{ borderTop: "1px solid #241f3d", paddingTop: "0.75rem" }}>
+            <div className="w-full mt-4" style={{ borderTop: "1px solid #eef0f3", paddingTop: "0.75rem" }}>
               <div className="flex items-center justify-between mb-2">
-                <span style={{ fontSize: "0.62rem", letterSpacing: "0.14em", color: "#a89fc4", textTransform: "uppercase" }}>
+                <span style={{ fontSize: "0.62rem", letterSpacing: "0.14em", color: "#4b5563", textTransform: "uppercase" }}>
                   Laps ({laps.length})
                 </span>
-                <button onClick={clearLaps} style={{ fontSize: "0.68rem", color: "#655c85" }}>
+                <button onClick={clearLaps} style={{ fontSize: "0.68rem", color: "#6b7280" }}>
                   Clear
                 </button>
               </div>
@@ -2320,12 +2340,12 @@ export default function ZenyFarmTracker({ initialBackup }) {
                     <div
                       key={lap.id}
                       className="flex items-center justify-between px-2 py-1 rounded"
-                      style={{ background: idx % 2 === 0 ? "transparent" : "#201c36", fontSize: "0.78rem" }}
+                      style={{ background: idx % 2 === 0 ? "transparent" : "#f8fafc", fontSize: "0.78rem" }}
                     >
-                      <span style={{ color: "#655c85", width: "48px" }}>Lap {idx + 1}</span>
-                      <span style={{ color: "#ede7d9" }}>{fmtTime(lap.ms)}</span>
-                      <span style={{ color: "#4fd1c5" }}>+{fmtTime(split)}</span>
-                      <button onClick={() => removeLap(lap.id)} style={{ color: "#d1495b" }} title="Remove lap">
+                      <span style={{ color: "#6b7280", width: "48px" }}>Lap {idx + 1}</span>
+                      <span style={{ color: "#31333f" }}>{fmtTime(lap.ms)}</span>
+                      <span style={{ color: "#ff4b4b" }}>+{fmtTime(split)}</span>
+                      <button onClick={() => removeLap(lap.id)} style={{ color: "#dc3545" }} title="Remove lap">
                         <Trash2 size={12} />
                       </button>
                     </div>
@@ -2339,7 +2359,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
         {activeListTab === "costs" && (
           <div
             className="rounded-lg p-3 mb-4"
-            style={{ background: "#1c1830", border: "1px solid #3a3358", color: "#655c85", fontSize: "0.78rem" }}
+            style={{ background: "#f3f4f6", border: "1px solid #d1d5db", color: "#6b7280", fontSize: "0.78rem" }}
           >
             Monster drop search isn't available for Costs — but you can still search for a known item below, or add
             what you spent manually (potions bought, repairs, teleport scrolls, etc.).
@@ -2349,12 +2369,12 @@ export default function ZenyFarmTracker({ initialBackup }) {
           <>
             {/* Monster search - add drops to the active list */}
             <div className="mb-4 relative">
-              <div style={{ fontSize: "0.65rem", letterSpacing: "0.18em", color: "#a89fc4", textTransform: "uppercase", marginBottom: "0.4rem" }}>
+              <div style={{ fontSize: "0.65rem", letterSpacing: "0.18em", color: "#4b5563", textTransform: "uppercase", marginBottom: "0.4rem" }}>
                 Add Monster Drops to {activeListTab === "main" ? "Main" : "Extras"}
               </div>
               <div className="flex items-center gap-2">
                 <div className="relative flex-1">
-                  <Search size={14} color="#655c85" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }} />
+                  <Search size={14} color="#6b7280" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }} />
                   <input
                     value={monsterQuery}
                     onChange={(e) => {
@@ -2364,15 +2384,15 @@ export default function ZenyFarmTracker({ initialBackup }) {
                     onFocus={() => setMonsterDropdownOpen(true)}
                     placeholder="Search monster name..."
                     className="w-full pl-8 pr-3 py-2 rounded-md outline-none text-sm"
-                    style={{ background: "#120f1c", border: "1px solid #3a3358", color: "#ede7d9" }}
+                    style={{ background: "#ffffff", border: "1px solid #d1d5db", color: "#31333f" }}
                   />
                   {monsterDropdownOpen && (
                     <div
                       className="absolute left-0 right-0 mt-1 rounded-md overflow-hidden z-10"
-                      style={{ background: "#1c1830", border: "1px solid #3a3358", maxHeight: "260px", overflowY: "auto" }}
+                      style={{ background: "#f3f4f6", border: "1px solid #d1d5db", maxHeight: "260px", overflowY: "auto" }}
                     >
                       {filteredMonsters.length === 0 ? (
-                        <div className="px-3 py-3 text-center" style={{ color: "#655c85", fontSize: "0.8rem" }}>
+                        <div className="px-3 py-3 text-center" style={{ color: "#6b7280", fontSize: "0.8rem" }}>
                           No monsters found.
                         </div>
                       ) : (
@@ -2380,7 +2400,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                           {filteredMonsters.length === 40 && (
                             <div
                               className="px-3 py-1.5 text-center"
-                              style={{ color: "#655c85", fontSize: "0.68rem", borderBottom: "1px solid #241f3d" }}
+                              style={{ color: "#6b7280", fontSize: "0.68rem", borderBottom: "1px solid #eef0f3" }}
                             >
                               Showing first 40 — keep typing to narrow it down
                             </div>
@@ -2389,12 +2409,12 @@ export default function ZenyFarmTracker({ initialBackup }) {
                             <div
                               key={m.id}
                               className="flex items-center justify-between px-3 py-2 cursor-pointer"
-                              style={{ borderTop: "1px solid #241f3d" }}
+                              style={{ borderTop: "1px solid #eef0f3" }}
                               onClick={() => addMonsterDropsToActiveList(m)}
                             >
                               <div>
-                                <div style={{ fontSize: "0.85rem", color: "#ede7d9" }}>{m.name}</div>
-                                <div style={{ fontSize: "0.68rem", color: "#655c85" }}>
+                                <div style={{ fontSize: "0.85rem", color: "#31333f" }}>{m.name}</div>
+                                <div style={{ fontSize: "0.68rem", color: "#6b7280" }}>
                                   {m.items
                                     .slice(0, 6)
                                     .map((it) => it.name)
@@ -2407,7 +2427,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                                   e.stopPropagation();
                                   openEditMonsterForm(m);
                                 }}
-                                style={{ color: "#655c85", flexShrink: 0, marginLeft: "0.5rem" }}
+                                style={{ color: "#6b7280", flexShrink: 0, marginLeft: "0.5rem" }}
                                 title="Edit monster"
                               >
                                 <Pencil size={12} />
@@ -2422,7 +2442,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 <button
                   onClick={openNewMonsterForm}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium"
-                  style={{ background: "#241f3d", color: "#a89fc4", border: "1px solid #3a3358" }}
+                  style={{ background: "#eef0f3", color: "#4b5563", border: "1px solid #d1d5db" }}
                 >
                   <Plus size={14} />
                   New Monster
@@ -2437,11 +2457,11 @@ export default function ZenyFarmTracker({ initialBackup }) {
 
         {/* Item search - add a single known item to the active list (available on all tabs, including Costs) */}
         <div className="mb-6 relative">
-          <div style={{ fontSize: "0.65rem", letterSpacing: "0.18em", color: "#a89fc4", textTransform: "uppercase", marginBottom: "0.4rem" }}>
+          <div style={{ fontSize: "0.65rem", letterSpacing: "0.18em", color: "#4b5563", textTransform: "uppercase", marginBottom: "0.4rem" }}>
             Add Single Item to {activeListTab === "main" ? "Main" : activeListTab === "extras" ? "Extras" : "Costs"}
           </div>
           <div className="relative">
-            <Search size={14} color="#655c85" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }} />
+            <Search size={14} color="#6b7280" style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }} />
             <input
               value={itemQuery}
               onChange={(e) => {
@@ -2451,15 +2471,15 @@ export default function ZenyFarmTracker({ initialBackup }) {
               onFocus={() => setItemDropdownOpen(true)}
               placeholder="Search item name..."
               className="w-full pl-8 pr-3 py-2 rounded-md outline-none text-sm"
-              style={{ background: "#120f1c", border: "1px solid #3a3358", color: "#ede7d9" }}
+              style={{ background: "#ffffff", border: "1px solid #d1d5db", color: "#31333f" }}
             />
             {itemDropdownOpen && (
               <div
                 className="absolute left-0 right-0 mt-1 rounded-md overflow-hidden z-10"
-                style={{ background: "#1c1830", border: "1px solid #3a3358", maxHeight: "260px", overflowY: "auto" }}
+                style={{ background: "#f3f4f6", border: "1px solid #d1d5db", maxHeight: "260px", overflowY: "auto" }}
               >
                 {filteredItems.length === 0 ? (
-                  <div className="px-3 py-3 text-center" style={{ color: "#655c85", fontSize: "0.8rem" }}>
+                  <div className="px-3 py-3 text-center" style={{ color: "#6b7280", fontSize: "0.8rem" }}>
                     No matching items. You can still add it manually below.
                   </div>
                 ) : (
@@ -2467,11 +2487,11 @@ export default function ZenyFarmTracker({ initialBackup }) {
                     <div
                       key={it.name.toLowerCase()}
                       className="flex items-center justify-between px-3 py-2 cursor-pointer"
-                      style={{ borderTop: "1px solid #241f3d" }}
+                      style={{ borderTop: "1px solid #eef0f3" }}
                       onClick={() => addItemToList(it)}
                     >
-                      <span style={{ fontSize: "0.85rem", color: "#ede7d9" }}>{it.name}</span>
-                      <span style={{ fontSize: "0.75rem", color: "#655c85", fontFamily: "ui-monospace, monospace" }}>
+                      <span style={{ fontSize: "0.85rem", color: "#31333f" }}>{it.name}</span>
+                      <span style={{ fontSize: "0.75rem", color: "#6b7280", fontFamily: "ui-monospace, monospace" }}>
                         {fmtZeny(it.sell)}z base
                       </span>
                     </div>
@@ -2487,27 +2507,27 @@ export default function ZenyFarmTracker({ initialBackup }) {
 
         {/* Monster form */}
         {monsterForm && (
-          <div className="rounded-lg p-4 mb-6" style={{ background: "#1c1830", border: "1px solid #e8b923" }}>
+          <div className="rounded-lg p-4 mb-6" style={{ background: "#f3f4f6", border: "1px solid #ff4b4b" }}>
             <div className="flex items-center justify-between mb-3">
-              <span style={{ fontSize: "0.7rem", letterSpacing: "0.14em", color: "#f4d675", textTransform: "uppercase" }}>
+              <span style={{ fontSize: "0.7rem", letterSpacing: "0.14em", color: "#dc3545", textTransform: "uppercase" }}>
                 {monsterForm.mode === "edit" ? "Edit Monster" : "New Monster"}
               </span>
-              <button onClick={closeMonsterForm} style={{ color: "#a89fc4" }}>
+              <button onClick={closeMonsterForm} style={{ color: "#4b5563" }}>
                 <X size={16} />
               </button>
             </div>
             <div className="flex flex-col gap-1 mb-3">
-              <label style={{ fontSize: "0.68rem", color: "#a89fc4" }}>Monster name</label>
+              <label style={{ fontSize: "0.68rem", color: "#4b5563" }}>Monster name</label>
               <input
                 value={monsterForm.name}
                 onChange={(e) => setMonsterForm({ ...monsterForm, name: e.target.value })}
                 placeholder="e.g. Deviruchi"
                 className="px-2.5 py-1.5 rounded-md outline-none text-sm"
-                style={{ background: "#120f1c", border: "1px solid #3a3358", color: "#ede7d9" }}
+                style={{ background: "#ffffff", border: "1px solid #d1d5db", color: "#31333f" }}
               />
             </div>
             <div className="flex flex-col gap-1 mb-3">
-              <label style={{ fontSize: "0.68rem", color: "#a89fc4" }}>
+              <label style={{ fontSize: "0.68rem", color: "#4b5563" }}>
                 Drop items &amp; sell price — one per line ("Item Name  Price")
               </label>
               <textarea
@@ -2517,14 +2537,14 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 placeholder={"Zargon\t240\nLittle Evil Horn\t264\nLittle Evil Wing\t1000"}
                 className="px-2.5 py-1.5 rounded-md outline-none text-sm"
                 style={{
-                  background: "#120f1c",
-                  border: "1px solid #3a3358",
-                  color: "#ede7d9",
+                  background: "#ffffff",
+                  border: "1px solid #d1d5db",
+                  color: "#31333f",
                   fontFamily: "ui-monospace, monospace",
                   resize: "vertical",
                 }}
               />
-              <span style={{ fontSize: "0.68rem", color: "#655c85" }}>
+              <span style={{ fontSize: "0.68rem", color: "#6b7280" }}>
                 Paste straight from a spreadsheet column — tabs, commas, or spaces all work.
               </span>
             </div>
@@ -2532,7 +2552,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
               <button
                 onClick={saveMonsterForm}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-                style={{ background: "#e8b923", color: "#1c1830" }}
+                style={{ background: "#ff4b4b", color: "#f3f4f6" }}
               >
                 <Save size={14} />
                 {monsterForm.mode === "edit" ? "Save Changes" : "Create Monster"}
@@ -2541,7 +2561,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 <button
                   onClick={() => deleteMonster(monsterForm.id)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-                  style={{ background: "#2a1420", color: "#d1495b", border: "1px solid #d1495b" }}
+                  style={{ background: "#fef2f2", color: "#dc3545", border: "1px solid #dc3545" }}
                 >
                   <Trash2 size={14} />
                   Delete Monster
@@ -2564,19 +2584,19 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 onClick={() => setActiveListTab(tab.key)}
                 className="rounded-t-md px-4 py-1.5 text-sm"
                 style={{
-                  background: dragOverTab === tab.key ? "#2a2450" : activeListTab === tab.key ? "#1c1830" : "#241f3d",
+                  background: dragOverTab === tab.key ? "#e5e7eb" : activeListTab === tab.key ? "#f3f4f6" : "#eef0f3",
                   border: `1px solid ${
-                    dragOverTab === tab.key ? "#4fd1c5" : activeListTab === tab.key ? "#e8b923" : "#3a3358"
+                    dragOverTab === tab.key ? "#ff4b4b" : activeListTab === tab.key ? "#ff4b4b" : "#d1d5db"
                   }`,
-                  borderBottom: activeListTab === tab.key ? "1px solid #1c1830" : "1px solid #3a3358",
-                  color: activeListTab === tab.key ? "#f4d675" : "#a89fc4",
+                  borderBottom: activeListTab === tab.key ? "1px solid #f3f4f6" : "1px solid #d1d5db",
+                  color: activeListTab === tab.key ? "#dc3545" : "#4b5563",
                   marginBottom: "-1px",
                   transition: "background 0.1s ease, border-color 0.1s ease",
                 }}
               >
                 {tab.label}
                 {dragItemId && dragSourceTab !== tab.key && (
-                  <span style={{ fontSize: "0.62rem", color: "#4fd1c5", marginLeft: "0.35rem" }}>drop here</span>
+                  <span style={{ fontSize: "0.62rem", color: "#ff4b4b", marginLeft: "0.35rem" }}>drop here</span>
                 )}
               </button>
             ))}
@@ -2584,10 +2604,10 @@ export default function ZenyFarmTracker({ initialBackup }) {
               onClick={() => setActiveListTab("costs")}
               className="rounded-t-md px-4 py-1.5 text-sm"
               style={{
-                background: activeListTab === "costs" ? "#1c1830" : "#241f3d",
-                border: `1px solid ${activeListTab === "costs" ? "#d1495b" : "#3a3358"}`,
-                borderBottom: activeListTab === "costs" ? "1px solid #1c1830" : "1px solid #3a3358",
-                color: activeListTab === "costs" ? "#f2a8b3" : "#a89fc4",
+                background: activeListTab === "costs" ? "#f3f4f6" : "#eef0f3",
+                border: `1px solid ${activeListTab === "costs" ? "#dc3545" : "#d1d5db"}`,
+                borderBottom: activeListTab === "costs" ? "1px solid #f3f4f6" : "1px solid #d1d5db",
+                color: activeListTab === "costs" ? "#991b1b" : "#4b5563",
                 marginBottom: "-1px",
                 transition: "background 0.1s ease, border-color 0.1s ease",
               }}
@@ -2600,7 +2620,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
             <button
               onClick={sortActiveListByName}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium mb-1"
-              style={{ background: "#241f3d", color: "#a89fc4", border: "1px solid #3a3358" }}
+              style={{ background: "#eef0f3", color: "#4b5563", border: "1px solid #d1d5db" }}
               disabled={getActiveList().length === 0}
               title="Sort items alphabetically by name"
             >
@@ -2610,7 +2630,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
             <button
               onClick={sortActiveListByCategory}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium mb-1"
-              style={{ background: "#241f3d", color: "#a89fc4", border: "1px solid #3a3358" }}
+              style={{ background: "#eef0f3", color: "#4b5563", border: "1px solid #d1d5db" }}
               disabled={getActiveList().length === 0}
               title="Sort by Use, then Equip, then Misc"
             >
@@ -2622,9 +2642,9 @@ export default function ZenyFarmTracker({ initialBackup }) {
         {bulkSelectedIds.length > 0 && (
           <div
             className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 mb-2 flex-wrap"
-            style={{ background: "#1c1830", border: "1px solid #4fd1c5" }}
+            style={{ background: "#f3f4f6", border: "1px solid #ff4b4b" }}
           >
-            <span style={{ fontSize: "0.8rem", color: "#a89fc4" }}>
+            <span style={{ fontSize: "0.8rem", color: "#4b5563" }}>
               {bulkSelectedIds.length} item{bulkSelectedIds.length === 1 ? "" : "s"} selected
             </span>
             <div className="flex items-center gap-2 flex-wrap">
@@ -2632,7 +2652,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 <button
                   onClick={() => bulkMoveSelected("extras")}
                   className="px-2.5 py-1 rounded-md text-xs font-medium"
-                  style={{ background: "#241f3d", color: "#a89fc4", border: "1px solid #3a3358" }}
+                  style={{ background: "#eef0f3", color: "#4b5563", border: "1px solid #d1d5db" }}
                 >
                   Move to Extras
                 </button>
@@ -2641,7 +2661,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 <button
                   onClick={() => bulkMoveSelected("main")}
                   className="px-2.5 py-1 rounded-md text-xs font-medium"
-                  style={{ background: "#241f3d", color: "#a89fc4", border: "1px solid #3a3358" }}
+                  style={{ background: "#eef0f3", color: "#4b5563", border: "1px solid #d1d5db" }}
                 >
                   Move to Main
                 </button>
@@ -2650,7 +2670,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 <button
                   onClick={() => bulkMoveSelected("costs")}
                   className="px-2.5 py-1 rounded-md text-xs font-medium"
-                  style={{ background: "#241f3d", color: "#a89fc4", border: "1px solid #3a3358" }}
+                  style={{ background: "#eef0f3", color: "#4b5563", border: "1px solid #d1d5db" }}
                 >
                   Move to Costs
                 </button>
@@ -2658,7 +2678,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
               <button
                 onClick={bulkDeleteSelected}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium"
-                style={{ background: "#2a1420", color: "#d1495b", border: "1px solid #d1495b" }}
+                style={{ background: "#fef2f2", color: "#dc3545", border: "1px solid #dc3545" }}
               >
                 <Trash2 size={12} />
                 Delete Selected
@@ -2666,16 +2686,16 @@ export default function ZenyFarmTracker({ initialBackup }) {
               <button
                 onClick={() => setBulkSelectedIds([])}
                 className="text-xs"
-                style={{ color: "#655c85" }}
+                style={{ color: "#6b7280" }}
               >
                 Clear
               </button>
             </div>
           </div>
         )}
-        <div className="rounded-lg overflow-hidden mb-3" style={{ background: "#1c1830", border: "1px solid #3a3358" }}>
+        <div className="rounded-lg overflow-hidden mb-3" style={{ background: "#f3f4f6", border: "1px solid #d1d5db" }}>
           {getActiveList().length === 0 ? (
-            <div className="px-4 py-6 text-center" style={{ color: "#655c85", fontSize: "0.85rem" }}>
+            <div className="px-4 py-6 text-center" style={{ color: "#6b7280", fontSize: "0.85rem" }}>
               {activeListTab === "main"
                 ? "Pick a map above to load its item list, or add items manually below."
                 : activeListTab === "extras"
@@ -2685,49 +2705,49 @@ export default function ZenyFarmTracker({ initialBackup }) {
           ) : (
             <table className="w-full" style={{ borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#241f3d" }}>
+                <tr style={{ background: "#eef0f3" }}>
                   <th className="px-2 py-1 text-center" style={{ width: "24px" }}>
                     <input
                       type="checkbox"
                       checked={bulkSelectedIds.length > 0 && bulkSelectedIds.length === getActiveList().length}
                       onChange={toggleBulkSelectAll}
                       title="Select all"
-                      style={{ width: "13px", height: "13px", accentColor: "#4fd1c5", cursor: "pointer" }}
+                      style={{ width: "13px", height: "13px", accentColor: "#ff4b4b", cursor: "pointer" }}
                     />
                   </th>
                   <th className="px-2 py-1" style={{ width: "28px" }} />
                   <th
                     className="text-left px-4 py-1"
-                    style={{ fontSize: "0.68rem", letterSpacing: "0.1em", color: "#a89fc4", textTransform: "uppercase", fontWeight: 500 }}
+                    style={{ fontSize: "0.68rem", letterSpacing: "0.1em", color: "#4b5563", textTransform: "uppercase", fontWeight: 500 }}
                   >
                     Item
                   </th>
                   <th
                     className="text-left px-3 py-1"
-                    style={{ fontSize: "0.68rem", letterSpacing: "0.1em", color: "#a89fc4", textTransform: "uppercase", fontWeight: 500, width: "90px" }}
+                    style={{ fontSize: "0.68rem", letterSpacing: "0.1em", color: "#4b5563", textTransform: "uppercase", fontWeight: 500, width: "90px" }}
                   >
                     Qty
                   </th>
                   <th
                     className="text-left px-3 py-1"
-                    style={{ fontSize: "0.68rem", letterSpacing: "0.1em", color: "#a89fc4", textTransform: "uppercase", fontWeight: 500, width: "110px" }}
+                    style={{ fontSize: "0.68rem", letterSpacing: "0.1em", color: "#4b5563", textTransform: "uppercase", fontWeight: 500, width: "110px" }}
                   >
                     {activeListTab === "costs" ? "Cost" : "Sell"}
                   </th>
                   <th
                     className="text-left px-3 py-1"
-                    style={{ fontSize: "0.68rem", letterSpacing: "0.1em", color: "#a89fc4", textTransform: "uppercase", fontWeight: 500, width: "120px" }}
+                    style={{ fontSize: "0.68rem", letterSpacing: "0.1em", color: "#4b5563", textTransform: "uppercase", fontWeight: 500, width: "120px" }}
                   >
                     Total
                   </th>
                   <th
                     className="text-left px-3 py-1"
-                    style={{ fontSize: "0.68rem", letterSpacing: "0.1em", color: "#a89fc4", textTransform: "uppercase", fontWeight: 500, width: "70px" }}
+                    style={{ fontSize: "0.68rem", letterSpacing: "0.1em", color: "#4b5563", textTransform: "uppercase", fontWeight: 500, width: "70px" }}
                   >
                     {activeListTab === "costs" ? "" : "Type"}
                   </th>
                   <th className="px-2 py-1" style={{ width: "34px" }} title={activeListTab === "costs" ? undefined : "Tally this item's quantity into Tracked Count"}>
-                    {activeListTab === "costs" ? null : <Skull size={13} color="#655c85" />}
+                    {activeListTab === "costs" ? null : <Skull size={13} color="#6b7280" />}
                   </th>
                   <th className="px-3 py-1" style={{ width: "36px" }} />
                 </tr>
@@ -2740,13 +2760,13 @@ export default function ZenyFarmTracker({ initialBackup }) {
                     style={{
                       background:
                         dragOverItemId === it.id
-                          ? "#2a2450"
+                          ? "#e5e7eb"
                           : dragItemId === it.id
-                          ? "#241f3d"
+                          ? "#eef0f3"
                           : idx % 2 === 0
                           ? "transparent"
-                          : "#201c36",
-                      borderTop: dragOverItemId === it.id ? "2px solid #4fd1c5" : "1px solid #241f3d",
+                          : "#f8fafc",
+                      borderTop: dragOverItemId === it.id ? "2px solid #ff4b4b" : "1px solid #eef0f3",
                       opacity: dragItemId === it.id ? 0.5 : 1,
                     }}
                   >
@@ -2755,7 +2775,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                         type="checkbox"
                         checked={bulkSelectedIds.includes(it.id)}
                         onChange={() => toggleBulkSelect(it.id)}
-                        style={{ width: "13px", height: "13px", accentColor: "#4fd1c5", cursor: "pointer" }}
+                        style={{ width: "13px", height: "13px", accentColor: "#ff4b4b", cursor: "pointer" }}
                       />
                     </td>
                     <td className="px-2 py-1">
@@ -2763,7 +2783,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                         <div
                           onPointerDown={(e) => startDrag(e, it.id)}
                           onTouchStart={(e) => startDrag(e, it.id)}
-                          style={{ cursor: "grab", touchAction: "none", color: "#655c85" }}
+                          style={{ cursor: "grab", touchAction: "none", color: "#6b7280" }}
                           title="Drag to reorder or move to Extras"
                         >
                           <GripVertical size={15} />
@@ -2778,7 +2798,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                           placeholder="Item name"
                           title={itemIdFor(it.name) ? `Item ID #${itemIdFor(it.name)}` : undefined}
                           className="bg-transparent outline-none w-full"
-                          style={{ color: "#ede7d9", fontSize: "0.85rem" }}
+                          style={{ color: "#31333f", fontSize: "0.85rem" }}
                         />
                         {it.name.trim() && activeListTab !== "costs" && (
                           <select
@@ -2788,9 +2808,9 @@ export default function ZenyFarmTracker({ initialBackup }) {
                             style={{
                               fontSize: "0.62rem",
                               letterSpacing: "0.02em",
-                              color: "#655c85",
-                              background: "#120f1c",
-                              border: "1px solid #3a3358",
+                              color: "#6b7280",
+                              background: "#ffffff",
+                              border: "1px solid #d1d5db",
                               borderRadius: "4px",
                               padding: "1px 3px",
                               whiteSpace: "nowrap",
@@ -2824,7 +2844,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                         }}
                         placeholder="0"
                         className="bg-transparent outline-none w-full"
-                        style={{ color: "#ede7d9", fontFamily: "ui-monospace, monospace", fontSize: "0.85rem" }}
+                        style={{ color: "#31333f", fontFamily: "ui-monospace, monospace", fontSize: "0.85rem" }}
                       />
                     </td>
                     <td className="px-3 py-1">
@@ -2835,14 +2855,14 @@ export default function ZenyFarmTracker({ initialBackup }) {
                         onChange={(e) => updateItem(it.id, "sell", parseFloat(e.target.value) || 0)}
                         placeholder="0"
                         className="bg-transparent outline-none w-full"
-                        style={{ color: "#a89fc4", fontFamily: "ui-monospace, monospace", fontSize: "0.85rem" }}
+                        style={{ color: "#4b5563", fontFamily: "ui-monospace, monospace", fontSize: "0.85rem" }}
                       />
                     </td>
                     <td
                       className="px-3 py-1"
                       style={{
                         fontFamily: "ui-monospace, monospace",
-                        color: activeListTab === "costs" ? "#d1495b" : "#f4d675",
+                        color: activeListTab === "costs" ? "#dc3545" : "#dc3545",
                         fontSize: "0.85rem",
                       }}
                     >
@@ -2857,8 +2877,8 @@ export default function ZenyFarmTracker({ initialBackup }) {
                           className="px-2 py-1 rounded-full text-xs font-medium"
                           style={
                             it.sellType === "npc"
-                              ? { background: "#241f3d", color: "#a89fc4", border: "1px solid #3a3358" }
-                              : { background: "rgba(232,185,35,0.15)", color: "#e8b923", border: "1px solid #e8b923" }
+                              ? { background: "#eef0f3", color: "#4b5563", border: "1px solid #d1d5db" }
+                              : { background: "rgba(255,75,75,0.15)", color: "#ff4b4b", border: "1px solid #ff4b4b" }
                           }
                         >
                           {it.sellType === "npc" ? "NPC" : "Vend"}
@@ -2872,12 +2892,12 @@ export default function ZenyFarmTracker({ initialBackup }) {
                           checked={!!it.count}
                           onChange={() => toggleItemCount(it.id)}
                           title="Tally this item's quantity into Tracked Count"
-                          style={{ width: "15px", height: "15px", accentColor: "#d1495b", cursor: "pointer" }}
+                          style={{ width: "15px", height: "15px", accentColor: "#dc3545", cursor: "pointer" }}
                         />
                       )}
                     </td>
                     <td className="px-3 py-1">
-                      <button onClick={() => removeItem(it.id)} style={{ color: "#d1495b" }} title="Remove">
+                      <button onClick={() => removeItem(it.id)} style={{ color: "#dc3545" }} title="Remove">
                         <Trash2 size={14} />
                       </button>
                     </td>
@@ -2885,10 +2905,10 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 ))}
               </tbody>
               <tfoot>
-                <tr style={{ background: "#241f3d", borderTop: "1px solid #3a3358" }}>
+                <tr style={{ background: "#eef0f3", borderTop: "1px solid #d1d5db" }}>
                   <td className="px-2 py-1.5" />
                   <td className="px-2 py-1.5" />
-                  <td className="px-4 py-1.5" style={{ fontSize: "0.8rem", letterSpacing: "0.06em", color: "#ede7d9", fontWeight: 600 }}>
+                  <td className="px-4 py-1.5" style={{ fontSize: "0.8rem", letterSpacing: "0.06em", color: "#31333f", fontWeight: 600 }}>
                     {activeListTab === "main" ? "Main Total" : activeListTab === "extras" ? "Extras Total" : "Total Costs"}
                   </td>
                   <td className="px-3 py-1.5" />
@@ -2897,7 +2917,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                     className="px-3 py-1.5"
                     style={{
                       fontFamily: "ui-monospace, monospace",
-                      color: activeListTab === "costs" ? "#d1495b" : "#f4d675",
+                      color: activeListTab === "costs" ? "#dc3545" : "#dc3545",
                       fontWeight: 700,
                       fontSize: "0.85rem",
                     }}
@@ -2918,7 +2938,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
           <button
             onClick={addBlankItem}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-            style={{ background: "#241f3d", color: "#a89fc4", border: "1px solid #3a3358" }}
+            style={{ background: "#eef0f3", color: "#4b5563", border: "1px solid #d1d5db" }}
           >
             <Plus size={14} />
             {activeListTab === "costs" ? "Add Cost" : `Add Item to ${activeListTab === "main" ? "Main" : "Extras"}`}
@@ -2926,7 +2946,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
           <button
             onClick={openSaveCurrentAsMapForm}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-            style={{ background: "#241f3d", color: "#a89fc4", border: "1px solid #3a3358" }}
+            style={{ background: "#eef0f3", color: "#4b5563", border: "1px solid #d1d5db" }}
             disabled={items.length === 0 && extraItems.length === 0}
           >
             <MapPin size={14} />
@@ -2936,14 +2956,14 @@ export default function ZenyFarmTracker({ initialBackup }) {
             <button
               onClick={updateActiveMap}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium"
-              style={{ background: "#241f3d", color: "#e8b923", border: "1px solid #e8b923" }}
+              style={{ background: "#eef0f3", color: "#ff4b4b", border: "1px solid #ff4b4b" }}
               title="Save the current Main/Extras lists back into this map"
             >
               <Save size={14} />
               Update Map
             </button>
           )}
-          {mapUpdateFlash && <span style={{ color: "#4fd1c5", fontSize: "0.8rem", alignSelf: "center" }}>Map updated.</span>}
+          {mapUpdateFlash && <span style={{ color: "#ff4b4b", fontSize: "0.8rem", alignSelf: "center" }}>Map updated.</span>}
         </div>
 
         {/* Main + Extra + Zeny/Hour + Tracked Count */}
@@ -2951,18 +2971,18 @@ export default function ZenyFarmTracker({ initialBackup }) {
           className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
           style={{ fontFamily: "'JetBrains Mono', ui-monospace, Menlo, monospace" }}
         >
-          <div className="rounded-lg p-5 flex flex-col justify-center" style={{ background: "#1c1830", border: "1px solid #3a3358" }}>
+          <div className="rounded-lg p-5 flex flex-col justify-center" style={{ background: "#f3f4f6", border: "1px solid #d1d5db" }}>
             <div className="flex items-center gap-1.5 mb-1">
-              <Coins size={13} color="#e8b923" />
-              <span style={{ fontSize: "0.65rem", letterSpacing: "0.18em", color: "#a89fc4", textTransform: "uppercase" }}>
+              <Coins size={13} color="#ff4b4b" />
+              <span style={{ fontSize: "0.65rem", letterSpacing: "0.18em", color: "#4b5563", textTransform: "uppercase" }}>
                 Main
               </span>
             </div>
-            <div style={{ fontSize: "1.9rem", fontWeight: 600, color: "#f4d675" }}>{fmtZeny(grandTotal)} z</div>
-            <div style={{ fontSize: "0.72rem", color: "#a89fc4", marginTop: "0.15rem" }}>
+            <div style={{ fontSize: "1.9rem", fontWeight: 600, color: "#dc3545" }}>{fmtZeny(grandTotal)} z</div>
+            <div style={{ fontSize: "0.72rem", color: "#4b5563", marginTop: "0.15rem" }}>
               {totalCosts > 0 ? (
                 <span>
-                  {fmtZeny(mainGross)}z gross <span style={{ color: "#d1495b" }}>− {fmtZeny(totalCosts)}z costs</span>
+                  {fmtZeny(mainGross)}z gross <span style={{ color: "#dc3545" }}>− {fmtZeny(totalCosts)}z costs</span>
                 </span>
               ) : (
                 `${items.length} item${items.length === 1 ? "" : "s"} on list`
@@ -2970,47 +2990,47 @@ export default function ZenyFarmTracker({ initialBackup }) {
             </div>
           </div>
 
-          <div className="rounded-lg p-5 flex flex-col justify-center" style={{ background: "#1c1830", border: "1px solid #3a3358" }}>
+          <div className="rounded-lg p-5 flex flex-col justify-center" style={{ background: "#f3f4f6", border: "1px solid #d1d5db" }}>
             <div className="flex items-center gap-1.5 mb-1">
-              <Coins size={13} color="#4fd1c5" />
-              <span style={{ fontSize: "0.65rem", letterSpacing: "0.18em", color: "#a89fc4", textTransform: "uppercase" }}>
+              <Coins size={13} color="#ff4b4b" />
+              <span style={{ fontSize: "0.65rem", letterSpacing: "0.18em", color: "#4b5563", textTransform: "uppercase" }}>
                 Extra
               </span>
             </div>
-            <div style={{ fontSize: "1.9rem", fontWeight: 600, color: "#4fd1c5" }}>{fmtZeny(extraGross)} z</div>
-            <div style={{ fontSize: "0.72rem", color: "#a89fc4", marginTop: "0.15rem" }}>
+            <div style={{ fontSize: "1.9rem", fontWeight: 600, color: "#ff4b4b" }}>{fmtZeny(extraGross)} z</div>
+            <div style={{ fontSize: "0.72rem", color: "#4b5563", marginTop: "0.15rem" }}>
               {extraGross > 0
                 ? `bonus — not counted in Zeny/Hr (combined: ${fmtZeny(combinedTotal)}z)`
                 : `${extraItems.length} item${extraItems.length === 1 ? "" : "s"} on list`}
             </div>
           </div>
 
-          <div className="rounded-lg p-5 flex flex-col justify-center" style={{ background: "#1c1830", border: "1px solid #3a3358" }}>
+          <div className="rounded-lg p-5 flex flex-col justify-center" style={{ background: "#f3f4f6", border: "1px solid #d1d5db" }}>
             <div className="flex items-center gap-1.5 mb-1">
-              <Clock size={13} color="#4fd1c5" />
-              <span style={{ fontSize: "0.65rem", letterSpacing: "0.18em", color: "#a89fc4", textTransform: "uppercase" }}>
+              <Clock size={13} color="#ff4b4b" />
+              <span style={{ fontSize: "0.65rem", letterSpacing: "0.18em", color: "#4b5563", textTransform: "uppercase" }}>
                 Zeny / Hour
               </span>
             </div>
-            <div style={{ fontSize: "1.9rem", fontWeight: 600, color: "#4fd1c5" }}>
+            <div style={{ fontSize: "1.9rem", fontWeight: 600, color: "#ff4b4b" }}>
               {hours > 0.0005 ? `${fmtZeny(zenyPerHour)} z` : "—"}
             </div>
-            <div style={{ fontSize: "0.72rem", color: "#a89fc4", marginTop: "0.15rem" }}>
+            <div style={{ fontSize: "0.72rem", color: "#4b5563", marginTop: "0.15rem" }}>
               {hours > 0.0005 ? `Main only, ${fmtTime(elapsedMs)} elapsed` : "start the timer to calculate"}
             </div>
           </div>
 
-          <div className="rounded-lg p-5 flex flex-col justify-center" style={{ background: "#1c1830", border: "1px solid #3a3358" }}>
+          <div className="rounded-lg p-5 flex flex-col justify-center" style={{ background: "#f3f4f6", border: "1px solid #d1d5db" }}>
             <div className="flex items-center gap-1.5 mb-1">
-              <Skull size={13} color="#d1495b" />
-              <span style={{ fontSize: "0.65rem", letterSpacing: "0.18em", color: "#a89fc4", textTransform: "uppercase" }}>
+              <Skull size={13} color="#dc3545" />
+              <span style={{ fontSize: "0.65rem", letterSpacing: "0.18em", color: "#4b5563", textTransform: "uppercase" }}>
                 Tracked Count
               </span>
             </div>
-            <div style={{ fontSize: "1.9rem", fontWeight: 600, color: "#d1495b" }}>
+            <div style={{ fontSize: "1.9rem", fontWeight: 600, color: "#dc3545" }}>
               {trackedItemNames.length > 0 ? fmtZeny(trackedCount) : "—"}
             </div>
-            <div style={{ fontSize: "0.72rem", color: "#a89fc4", marginTop: "0.15rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{ fontSize: "0.72rem", color: "#4b5563", marginTop: "0.15rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {trackedItemNames.length > 0 ? `sum of: ${trackedItemNames.join(", ")}` : "check items to tally their quantity"}
             </div>
           </div>
@@ -3021,35 +3041,35 @@ export default function ZenyFarmTracker({ initialBackup }) {
           <button
             onClick={endSession}
             className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium"
-            style={{ background: "#4fd1c5", color: "#0b0914" }}
+            style={{ background: "#ff4b4b", color: "#31333f" }}
           >
             <Save size={15} />
             End Session &amp; Save to History
           </button>
-          {saveFlash && <span style={{ color: "#4fd1c5", fontSize: "0.8rem" }}>Session saved.</span>}
+          {saveFlash && <span style={{ color: "#ff4b4b", fontSize: "0.8rem" }}>Session saved.</span>}
         </div>
 
         {/* History */}
-        <div className="rounded-lg" style={{ background: "#1c1830", border: "1px solid #3a3358" }}>
+        <div className="rounded-lg" style={{ background: "#f3f4f6", border: "1px solid #d1d5db" }}>
           <button onClick={() => setHistoryOpen(!historyOpen)} className="w-full flex items-center justify-between px-4 py-3">
-            <span style={{ fontSize: "0.7rem", letterSpacing: "0.14em", color: "#a89fc4", textTransform: "uppercase" }}>
+            <span style={{ fontSize: "0.7rem", letterSpacing: "0.14em", color: "#4b5563", textTransform: "uppercase" }}>
               Session History ({history.length})
             </span>
-            {historyOpen ? <ChevronUp size={16} color="#a89fc4" /> : <ChevronDown size={16} color="#a89fc4" />}
+            {historyOpen ? <ChevronUp size={16} color="#4b5563" /> : <ChevronDown size={16} color="#4b5563" />}
           </button>
           {historyOpen && (
-            <div className="flex items-center gap-2 px-4 py-2 flex-wrap" style={{ borderTop: "1px solid #241f3d" }}>
+            <div className="flex items-center gap-2 px-4 py-2 flex-wrap" style={{ borderTop: "1px solid #eef0f3" }}>
               <div className="relative flex-1" style={{ minWidth: "160px" }}>
-                <Search size={13} color="#655c85" style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)" }} />
+                <Search size={13} color="#6b7280" style={{ position: "absolute", left: "8px", top: "50%", transform: "translateY(-50%)" }} />
                 <input
                   value={historySearch}
                   onChange={(e) => setHistorySearch(e.target.value)}
                   placeholder="Search by map or notes..."
                   className="w-full pl-7 pr-2 py-1.5 rounded-md outline-none text-sm"
-                  style={{ background: "#120f1c", border: "1px solid #3a3358", color: "#ede7d9" }}
+                  style={{ background: "#ffffff", border: "1px solid #d1d5db", color: "#31333f" }}
                 />
               </div>
-              <div className="flex items-center rounded-md overflow-hidden" style={{ border: "1px solid #3a3358" }}>
+              <div className="flex items-center rounded-md overflow-hidden" style={{ border: "1px solid #d1d5db" }}>
                 {[
                   { key: "all", label: "All" },
                   { key: "today", label: "Today" },
@@ -3061,8 +3081,8 @@ export default function ZenyFarmTracker({ initialBackup }) {
                     onClick={() => setHistoryDateFilter(opt.key)}
                     className="px-2.5 py-1.5 text-xs font-medium"
                     style={{
-                      background: historyDateFilter === opt.key ? "#e8b923" : "#241f3d",
-                      color: historyDateFilter === opt.key ? "#1c1830" : "#a89fc4",
+                      background: historyDateFilter === opt.key ? "#ff4b4b" : "#eef0f3",
+                      color: historyDateFilter === opt.key ? "#f3f4f6" : "#4b5563",
                     }}
                   >
                     {opt.label}
@@ -3070,7 +3090,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 ))}
               </div>
               {(historySearch.trim() || historyDateFilter !== "all") && (
-                <span style={{ fontSize: "0.72rem", color: "#655c85" }}>
+                <span style={{ fontSize: "0.72rem", color: "#6b7280" }}>
                   {filteredHistory.length} of {history.length}
                 </span>
               )}
@@ -3079,12 +3099,12 @@ export default function ZenyFarmTracker({ initialBackup }) {
           {historyOpen && combineSelectedIds.length > 0 && (
             <div
               className="flex items-center justify-between gap-2 px-4 py-2 flex-wrap"
-              style={{ borderTop: "1px solid #241f3d", background: "#17142a" }}
+              style={{ borderTop: "1px solid #eef0f3", background: "#f3f4f6" }}
             >
-              <span style={{ fontSize: "0.78rem", color: "#a89fc4" }}>
+              <span style={{ fontSize: "0.78rem", color: "#4b5563" }}>
                 {combineSelectedIds.length} session{combineSelectedIds.length === 1 ? "" : "s"} selected
                 {combineValidation.reason && (
-                  <span style={{ color: "#d1495b", marginLeft: "0.5rem" }}>— {combineValidation.reason}</span>
+                  <span style={{ color: "#dc3545", marginLeft: "0.5rem" }}>— {combineValidation.reason}</span>
                 )}
               </span>
               <div className="flex items-center gap-2">
@@ -3094,8 +3114,8 @@ export default function ZenyFarmTracker({ initialBackup }) {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium"
                   style={
                     combineValidation.valid
-                      ? { background: "#4fd1c5", color: "#0b0914" }
-                      : { background: "#241f3d", color: "#655c85", border: "1px solid #3a3358" }
+                      ? { background: "#ff4b4b", color: "#31333f" }
+                      : { background: "#eef0f3", color: "#6b7280", border: "1px solid #d1d5db" }
                   }
                 >
                   <Save size={13} />
@@ -3104,7 +3124,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 <button
                   onClick={() => setCombineSelectedIds([])}
                   className="text-xs"
-                  style={{ color: "#655c85" }}
+                  style={{ color: "#6b7280" }}
                 >
                   Clear
                 </button>
@@ -3112,13 +3132,13 @@ export default function ZenyFarmTracker({ initialBackup }) {
             </div>
           )}
           {historyOpen && (
-            <div style={{ borderTop: "1px solid #241f3d" }}>
+            <div style={{ borderTop: "1px solid #eef0f3" }}>
               {history.length === 0 ? (
-                <div className="px-4 py-5 text-center" style={{ color: "#655c85", fontSize: "0.85rem" }}>
+                <div className="px-4 py-5 text-center" style={{ color: "#6b7280", fontSize: "0.85rem" }}>
                   No completed sessions yet.
                 </div>
               ) : filteredHistory.length === 0 ? (
-                <div className="px-4 py-5 text-center" style={{ color: "#655c85", fontSize: "0.85rem" }}>
+                <div className="px-4 py-5 text-center" style={{ color: "#6b7280", fontSize: "0.85rem" }}>
                   No sessions match that search/filter.
                 </div>
               ) : (
@@ -3129,7 +3149,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                   const hms = msToHMS(h.durationMs);
                   const isSelected = combineSelectedIds.includes(h.id);
                   return (
-                    <div key={h.id} style={{ borderTop: "1px solid #241f3d" }}>
+                    <div key={h.id} style={{ borderTop: "1px solid #eef0f3" }}>
                       <div
                         onClick={() => toggleHistoryExpand(h.id)}
                         className="flex items-center justify-between px-4 py-2.5 gap-2 cursor-pointer"
@@ -3141,9 +3161,9 @@ export default function ZenyFarmTracker({ initialBackup }) {
                           onClick={(e) => e.stopPropagation()}
                           onChange={() => toggleCombineSelect(h.id)}
                           title="Select to combine with other sessions from the same map"
-                          style={{ width: "14px", height: "14px", accentColor: "#4fd1c5", cursor: "pointer", flexShrink: 0 }}
+                          style={{ width: "14px", height: "14px", accentColor: "#ff4b4b", cursor: "pointer", flexShrink: 0 }}
                         />
-                        <div style={{ color: "#a89fc4", minWidth: "150px", fontSize: "0.78rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        <div style={{ color: "#4b5563", minWidth: "150px", fontSize: "0.78rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
                           {fmtDateTime(h.date)}
                           {h.combinedFrom && h.combinedFrom.length > 1 && (
                             <span
@@ -3151,8 +3171,8 @@ export default function ZenyFarmTracker({ initialBackup }) {
                               style={{
                                 fontSize: "0.6rem",
                                 letterSpacing: "0.04em",
-                                color: "#4fd1c5",
-                                border: "1px solid #4fd1c5",
+                                color: "#ff4b4b",
+                                border: "1px solid #ff4b4b",
                                 borderRadius: "4px",
                                 padding: "1px 4px",
                                 whiteSpace: "nowrap",
@@ -3162,28 +3182,28 @@ export default function ZenyFarmTracker({ initialBackup }) {
                             </span>
                           )}
                         </div>
-                        <div style={{ color: "#655c85", flex: 1 }}>{h.mapName || "—"}</div>
-                        <div style={{ fontFamily: "ui-monospace, monospace", color: "#ede7d9" }}>{fmtTime(h.durationMs)}</div>
-                        <div style={{ fontFamily: "ui-monospace, monospace", color: "#f4d675" }}>{fmtZeny(total)} z</div>
+                        <div style={{ color: "#6b7280", flex: 1 }}>{h.mapName || "—"}</div>
+                        <div style={{ fontFamily: "ui-monospace, monospace", color: "#31333f" }}>{fmtTime(h.durationMs)}</div>
+                        <div style={{ fontFamily: "ui-monospace, monospace", color: "#dc3545" }}>{fmtZeny(total)} z</div>
                         {historyExtraGross(h) > 0 && (
                           <div
                             title="Extra (bonus) zeny — not included in the total or z/hr"
-                            style={{ fontFamily: "ui-monospace, monospace", color: "#4fd1c5", fontSize: "0.72rem" }}
+                            style={{ fontFamily: "ui-monospace, monospace", color: "#ff4b4b", fontSize: "0.72rem" }}
                           >
                             +{fmtZeny(historyExtraGross(h))} extra
                           </div>
                         )}
-                        <div style={{ fontFamily: "ui-monospace, monospace", color: "#4fd1c5" }}>{fmtZeny(zph)} z/hr</div>
-                        {h.notes && h.notes.trim() && <StickyNote size={12} color="#e8b923" title={h.notes} />}
-                        <Pencil size={12} color="#655c85" />
-                        {expanded ? <ChevronUp size={14} color="#655c85" /> : <ChevronDown size={14} color="#655c85" />}
+                        <div style={{ fontFamily: "ui-monospace, monospace", color: "#ff4b4b" }}>{fmtZeny(zph)} z/hr</div>
+                        {h.notes && h.notes.trim() && <StickyNote size={12} color="#ff4b4b" title={h.notes} />}
+                        <Pencil size={12} color="#6b7280" />
+                        {expanded ? <ChevronUp size={14} color="#6b7280" /> : <ChevronDown size={14} color="#6b7280" />}
                       </div>
 
                       {expanded && (
-                        <div className="px-4 pb-4" style={{ background: "#17142a" }}>
+                        <div className="px-4 pb-4" style={{ background: "#f3f4f6" }}>
                           {/* Duration editor */}
                           <div className="flex items-center gap-2 mb-3 pt-1">
-                            <span style={{ fontSize: "0.65rem", letterSpacing: "0.1em", color: "#a89fc4", textTransform: "uppercase" }}>
+                            <span style={{ fontSize: "0.65rem", letterSpacing: "0.1em", color: "#4b5563", textTransform: "uppercase" }}>
                               Duration
                             </span>
                             {["h", "m", "s"].map((field) => (
@@ -3197,20 +3217,20 @@ export default function ZenyFarmTracker({ initialBackup }) {
                                   className="px-2 py-1 rounded-md outline-none text-sm"
                                   style={{
                                     width: "56px",
-                                    background: "#120f1c",
-                                    border: "1px solid #3a3358",
-                                    color: "#ede7d9",
+                                    background: "#ffffff",
+                                    border: "1px solid #d1d5db",
+                                    color: "#31333f",
                                     fontFamily: "ui-monospace, monospace",
                                   }}
                                 />
-                                <span style={{ fontSize: "0.7rem", color: "#655c85" }}>{field}</span>
+                                <span style={{ fontSize: "0.7rem", color: "#6b7280" }}>{field}</span>
                               </div>
                             ))}
                           </div>
 
                           {h.combinedFrom && h.combinedFrom.length > 1 && (
                             <div className="mb-3">
-                              <span style={{ fontSize: "0.65rem", letterSpacing: "0.1em", color: "#a89fc4", textTransform: "uppercase" }}>
+                              <span style={{ fontSize: "0.65rem", letterSpacing: "0.1em", color: "#4b5563", textTransform: "uppercase" }}>
                                 Combined from {h.combinedFrom.length} sessions
                               </span>
                               <div className="flex flex-wrap gap-1.5 mt-1.5">
@@ -3219,9 +3239,9 @@ export default function ZenyFarmTracker({ initialBackup }) {
                                     key={i}
                                     style={{
                                       fontSize: "0.72rem",
-                                      color: "#a89fc4",
-                                      background: "#1c1830",
-                                      border: "1px solid #3a3358",
+                                      color: "#4b5563",
+                                      background: "#f3f4f6",
+                                      border: "1px solid #d1d5db",
                                       borderRadius: "4px",
                                       padding: "2px 6px",
                                       fontFamily: "ui-monospace, monospace",
@@ -3235,7 +3255,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                           )}
 
                           <div className="mb-3">
-                            <label style={{ fontSize: "0.65rem", letterSpacing: "0.1em", color: "#a89fc4", textTransform: "uppercase", display: "block", marginBottom: "0.3rem" }}>
+                            <label style={{ fontSize: "0.65rem", letterSpacing: "0.1em", color: "#4b5563", textTransform: "uppercase", display: "block", marginBottom: "0.3rem" }}>
                               Notes
                             </label>
                             <textarea
@@ -3246,9 +3266,9 @@ export default function ZenyFarmTracker({ initialBackup }) {
                               rows={2}
                               className="w-full px-2.5 py-1.5 rounded-md outline-none text-sm"
                               style={{
-                                background: "#120f1c",
-                                border: "1px solid #3a3358",
-                                color: "#ede7d9",
+                                background: "#ffffff",
+                                border: "1px solid #d1d5db",
+                                color: "#31333f",
                                 resize: "vertical",
                               }}
                             />
@@ -3259,21 +3279,21 @@ export default function ZenyFarmTracker({ initialBackup }) {
                             h,
                             listKey: "items",
                             title: "Main Items",
-                            accentColor: "#e8b923",
+                            accentColor: "#ff4b4b",
                             addLabel: "Add Main Item",
                           })}
                           {renderHistoryItemTable({
                             h,
                             listKey: "extraItems",
                             title: "Extra Items (bonus — not counted in Zeny/Hr)",
-                            accentColor: "#4fd1c5",
+                            accentColor: "#ff4b4b",
                             addLabel: "Add Extra Item",
                           })}
                           {renderHistoryItemTable({
                             h,
                             listKey: "costs",
                             title: "Costs",
-                            accentColor: "#d1495b",
+                            accentColor: "#dc3545",
                             addLabel: "Add Cost",
                           })}
 
@@ -3281,7 +3301,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                             <button
                               onClick={() => deleteHistoryEntry(h.id)}
                               className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium"
-                              style={{ background: "#2a1420", color: "#d1495b", border: "1px solid #d1495b" }}
+                              style={{ background: "#fef2f2", color: "#dc3545", border: "1px solid #dc3545" }}
                             >
                               <Trash2 size={12} />
                               Delete Session
@@ -3298,16 +3318,16 @@ export default function ZenyFarmTracker({ initialBackup }) {
         </div>
 
         {/* Analytics */}
-        <div className="rounded-lg p-4 mt-6 mb-10" style={{ background: "#1c1830", border: "1px solid #3a3358" }}>
+        <div className="rounded-lg p-4 mt-6 mb-10" style={{ background: "#f3f4f6", border: "1px solid #d1d5db" }}>
           <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
             <div className="flex items-center gap-1.5">
-              <Coins size={13} color="#e8b923" />
-              <span style={{ fontSize: "0.7rem", letterSpacing: "0.14em", color: "#a89fc4", textTransform: "uppercase" }}>
+              <Coins size={13} color="#ff4b4b" />
+              <span style={{ fontSize: "0.7rem", letterSpacing: "0.14em", color: "#4b5563", textTransform: "uppercase" }}>
                 Analytics — Daily {chartMetric === "zeny" ? "Zeny" : chartMetric === "time" ? "Time Farmed" : "Zeny/Hr Trend"}
               </span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="flex items-center rounded-md overflow-hidden" style={{ border: "1px solid #3a3358" }}>
+              <div className="flex items-center rounded-md overflow-hidden" style={{ border: "1px solid #d1d5db" }}>
                 {[
                   { key: "zeny", label: "Zeny" },
                   { key: "time", label: "Time" },
@@ -3318,8 +3338,8 @@ export default function ZenyFarmTracker({ initialBackup }) {
                     onClick={() => setChartMetric(opt.key)}
                     className="px-3 py-1 text-xs font-medium"
                     style={{
-                      background: chartMetric === opt.key ? "#e8b923" : "#241f3d",
-                      color: chartMetric === opt.key ? "#1c1830" : "#a89fc4",
+                      background: chartMetric === opt.key ? "#ff4b4b" : "#eef0f3",
+                      color: chartMetric === opt.key ? "#f3f4f6" : "#4b5563",
                     }}
                   >
                     {opt.label}
@@ -3327,12 +3347,12 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 ))}
               </div>
               {chartMetric !== "rate" && (
-                <label className="flex items-center gap-1.5 text-xs" style={{ color: "#a89fc4", cursor: "pointer" }}>
+                <label className="flex items-center gap-1.5 text-xs" style={{ color: "#4b5563", cursor: "pointer" }}>
                   <input
                     type="checkbox"
                     checked={chartSplitByMap}
                     onChange={(e) => setChartSplitByMap(e.target.checked)}
-                    style={{ width: "13px", height: "13px", accentColor: "#4fd1c5", cursor: "pointer" }}
+                    style={{ width: "13px", height: "13px", accentColor: "#ff4b4b", cursor: "pointer" }}
                   />
                   Split by map
                 </label>
@@ -3341,34 +3361,34 @@ export default function ZenyFarmTracker({ initialBackup }) {
           </div>
 
           {dailyChartData.length === 0 ? (
-            <div className="py-8 text-center" style={{ color: "#655c85", fontSize: "0.85rem" }}>
+            <div className="py-8 text-center" style={{ color: "#6b7280", fontSize: "0.85rem" }}>
               No completed sessions yet — end a session to start tracking daily zeny.
             </div>
           ) : chartMetric === "rate" ? (
             <div style={{ width: "100%", height: 260 }}>
               <ResponsiveContainer>
                 <LineChart data={dailyChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#3a3358" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" vertical={false} />
                   <XAxis
                     dataKey="label"
-                    tick={{ fill: "#a89fc4", fontSize: 11 }}
-                    axisLine={{ stroke: "#3a3358" }}
+                    tick={{ fill: "#4b5563", fontSize: 11 }}
+                    axisLine={{ stroke: "#d1d5db" }}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fill: "#a89fc4", fontSize: 11 }}
-                    axisLine={{ stroke: "#3a3358" }}
+                    tick={{ fill: "#4b5563", fontSize: 11 }}
+                    axisLine={{ stroke: "#d1d5db" }}
                     tickLine={false}
                     tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}
                     width={40}
                   />
-                  <Tooltip cursor={{ stroke: "#3a3358" }} content={<DailyChartTooltip splitByMap={false} />} />
+                  <Tooltip cursor={{ stroke: "#d1d5db" }} content={<DailyChartTooltip splitByMap={false} />} />
                   <Line
                     type="monotone"
                     dataKey="zenyPerHr"
-                    stroke="#4fd1c5"
+                    stroke="#ff4b4b"
                     strokeWidth={2}
-                    dot={{ r: 3, fill: "#4fd1c5" }}
+                    dot={{ r: 3, fill: "#ff4b4b" }}
                     activeDot={{ r: 5 }}
                   />
                 </LineChart>
@@ -3378,16 +3398,16 @@ export default function ZenyFarmTracker({ initialBackup }) {
             <div style={{ width: "100%", height: 260 }}>
               <ResponsiveContainer>
                 <BarChart data={dailyChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#3a3358" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#d1d5db" vertical={false} />
                   <XAxis
                     dataKey="label"
-                    tick={{ fill: "#a89fc4", fontSize: 11 }}
-                    axisLine={{ stroke: "#3a3358" }}
+                    tick={{ fill: "#4b5563", fontSize: 11 }}
+                    axisLine={{ stroke: "#d1d5db" }}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fill: "#a89fc4", fontSize: 11 }}
-                    axisLine={{ stroke: "#3a3358" }}
+                    tick={{ fill: "#4b5563", fontSize: 11 }}
+                    axisLine={{ stroke: "#d1d5db" }}
                     tickLine={false}
                     tickFormatter={(v) =>
                       chartMetric === "zeny" ? (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v) : `${v.toFixed(0)}h`
@@ -3395,7 +3415,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                     width={40}
                   />
                   <Tooltip
-                    cursor={{ fill: "rgba(232,185,35,0.08)" }}
+                    cursor={{ fill: "rgba(255,75,75,0.08)" }}
                     content={<DailyChartTooltip splitByMap={chartSplitByMap} />}
                   />
                   {chartSplitByMap
@@ -3412,7 +3432,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                     : (
                         <Bar
                           dataKey={chartMetric === "zeny" ? "totalZeny" : "totalDurationHrs"}
-                          fill="#e8b923"
+                          fill="#ff4b4b"
                           radius={[4, 4, 0, 0]}
                         />
                       )}
@@ -3423,7 +3443,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                   {chartMapNames.map((name) => (
                     <div key={name} className="flex items-center gap-1.5">
                       <span style={{ width: "9px", height: "9px", borderRadius: "2px", background: mapColorFor(name), display: "inline-block" }} />
-                      <span style={{ fontSize: "0.7rem", color: "#a89fc4" }}>{name}</span>
+                      <span style={{ fontSize: "0.7rem", color: "#4b5563" }}>{name}</span>
                     </div>
                   ))}
                 </div>
@@ -3439,17 +3459,17 @@ export default function ZenyFarmTracker({ initialBackup }) {
           style={{
             bottom: "20px",
             transform: "translateX(-50%)",
-            background: "#1c1830",
-            border: "1px solid #4fd1c5",
+            background: "#f3f4f6",
+            border: "1px solid #ff4b4b",
             boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
             zIndex: 50,
           }}
         >
-          <span style={{ fontSize: "0.82rem", color: "#ede7d9" }}>Session deleted</span>
+          <span style={{ fontSize: "0.82rem", color: "#31333f" }}>Session deleted</span>
           <button
             onClick={undoDeleteHistoryEntry}
             className="flex items-center gap-1.5 px-3 py-1 rounded-md text-sm font-medium"
-            style={{ background: "#4fd1c5", color: "#0b0914" }}
+            style={{ background: "#ff4b4b", color: "#31333f" }}
           >
             Undo
           </button>
