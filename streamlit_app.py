@@ -1,5 +1,8 @@
 import streamlit as st
 
+from map_alerts import render_sidebar
+from zeny_tracker_component import render_zeny_tracker
+
 st.set_page_config(page_title="uaRO Tools", page_icon="🎮", layout="wide")
 
 try:
@@ -12,7 +15,7 @@ if access_token and provided_token != access_token:
     st.error("Access token required. Add ?token=YOUR_ACCESS_TOKEN to the app URL.")
     st.stop()
 
-map_alerts = st.Page("pages/map_alerts.py", title="Map Alerts", icon="🗺️", default=True)
-zeny_tracker = st.Page("pages/zeny_tracker.py", title="Zeny Tracker", icon="🪙")
-page = st.navigation([map_alerts, zeny_tracker], position="sidebar")
-page.run()
+render_sidebar()
+st.title("🪙 Zeny Tracker")
+st.caption("Track farming sessions, compare maps, and review your zeny per hour.")
+render_zeny_tracker()
