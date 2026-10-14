@@ -4,7 +4,7 @@ A single-page app with the **Map Alerts** tracker in the sidebar and the **Zeny 
 
 ## Run locally
 
-1. Install the Python requirements from `requirements-streamlit.txt`. This also installs the local component package that serves the built tracker assets.
+1. Install the Python requirements from `requirements-streamlit.txt`.
 2. Build the React tracker once:
 
    ```sh
