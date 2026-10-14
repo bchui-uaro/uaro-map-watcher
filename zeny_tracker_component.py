@@ -10,10 +10,9 @@ BACKUP_PATH = ROOT / "zeny_tracker" / "zeny-farm-backup.json"
 
 @st.cache_resource
 def load_component():
-    # The minified assets are single-line strings containing slashes. The newline
-    # makes Streamlit classify them as inline content instead of asset paths.
-    js = "\n" + (FRONTEND / "renderer.js").read_text(encoding="utf-8")
-    css = "\n" + (FRONTEND / "style.css").read_text(encoding="utf-8")
+    # Keep a non-leading newline so Streamlit doesn't mistake minified assets for paths.
+    js = "/* Inline tracker bundle */\n" + (FRONTEND / "renderer.js").read_text(encoding="utf-8")
+    css = "/* Inline tracker styles */\n" + (FRONTEND / "style.css").read_text(encoding="utf-8")
     return st.components.v2.component(
         "zeny_farm_tracker",
         html='<div class="zeny-tracker-root"></div>',
