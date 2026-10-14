@@ -1,33 +1,36 @@
-# uaRO Map Watcher — Streamlit Edition
+# uaRO Tools — Streamlit
 
-This version runs on Streamlit Community Cloud and includes a dashboard with manual monitoring controls.
+A single Streamlit app with two pages: **Map Alerts** for manual uaRO map checks and **Zeny Tracker** for Ragnarok farming sessions.
 
-## Deploy
+## Run locally
 
-1. Upload `streamlit_app.py` and `requirements-streamlit.txt` to your GitHub repository.
-2. Open Streamlit Community Cloud and choose **Create app**.
-3. Select the repository and branch.
-4. Set the main file path to `streamlit_app.py`.
-5. Deploy the app.
-6. In the app settings, add these secrets:
+1. Install the Python requirements from `requirements-streamlit.txt`.
+2. Build the React tracker once:
+
+   ```sh
+   cd zeny_tracker/frontend
+   pnpm install
+   pnpm build
+   ```
+
+3. From the project root, run `streamlit run streamlit_app.py`.
+
+## Configure secrets
+
+Add these values in `.streamlit/secrets.toml` or the Streamlit deployment settings as needed:
 
 ```toml
 DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/REPLACE_ME"
 ACCESS_TOKEN = "choose-a-secret"
-POLL_INTERVAL_SECONDS = "60"
 MAP_URL = "https://uaro.net/cp/?module=character&action=mapstats"
 ```
 
-`DISCORD_WEBHOOK_URL` is required for Discord alerts. `ACCESS_TOKEN` is optional but recommended for a public app. If set, open the app with `?token=choose-a-secret`.
+`DISCORD_WEBHOOK_URL` is optional. If set, manual checks can send Discord messages when a watched map crosses its threshold. `ACCESS_TOKEN` is optional; when set, open the app with `?token=choose-a-secret`.
 
-## Use
+## Map Alerts
 
-The app starts with monitoring OFF. Use the sidebar to turn **Discord alerts** on or off, enter two intervals, and optionally disable the empty-result delay. Turning Discord alerts off does not stop checks or UI updates; it only suppresses messages. Click **Check Page Now** for a single manual page check without starting continuous monitoring. Click **Refresh map list**, select a map from the dropdown, and click **Add map**. Click **Start Monitoring** to begin automatic checks. Click **Stop Monitoring** when finished.
+Map checks run only when you click **Check Page Now**. Watched maps and thresholds are stored in this browser. The uaRO page only lists maps with players, so you can also type a map name to watch it while empty. The current status and recent changes are held for the active Streamlit session.
 
-Each watched map has an **Alert below** threshold. A value of `2` alerts when the map has `0` or `1` player and sends a recovery message when it reaches `2` or more. The default value is `1`, which preserves empty-map-only alerts.
+## Zeny Tracker
 
-Watched maps and thresholds are saved in the browser's local storage, so refreshing the browser page preserves them without changing the URL. Settings are browser-specific; opening the app in a different browser will start with its default map.
-
-The uaRO page only displays maps that currently have players. Therefore, an empty map cannot be discovered from a fresh page load; maps disappear when empty. Use the single **Add map** field to choose a listed map or type an unlisted map name. The app keeps watched maps available after they disappear and includes `gef_dun02` by default. The Current status header shows last and next check times in Pacific Time.
-
-The free Streamlit service keeps state in the current app session. If the app sleeps or restarts, monitoring returns to OFF and watched maps reset to the default `gef_dun02`.
+The provided backup is loaded on first use in each browser. The tracker then saves its session, history, maps, monster database, and custom items in that browser's local storage. Use the tracker’s built-in JSON backup export/import to move data to another browser or device. Existing browser tracker data is preserved and takes precedence over the bundled starter backup.
