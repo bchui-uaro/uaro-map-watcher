@@ -86,6 +86,7 @@ def load_saved_maps():
         stored = browser_storage.getItem(PREFERENCES_KEY)
         if stored not in (None, ""):
             data = json.loads(stored)
+            st.session_state.watched_maps_saved_at = data.get("saved_at")
             names = data.get("watched_maps", [])
             return [name for name in names if isinstance(name, str) and re.fullmatch(r"[A-Za-z0-9_-]+", name)]
     except Exception:
@@ -96,9 +97,15 @@ def load_saved_maps():
 
 def save_preferences():
     try:
-        browser_storage.setItem(PREFERENCES_KEY, json.dumps({"watched_maps": st.session_state.watched_maps}))
+        saved_at = datetime.now(PACIFIC).isoformat(timespec="seconds")
+        browser_storage.setItem(PREFERENCES_KEY, json.dumps({
+            "watched_maps": st.session_state.watched_maps,
+            "saved_at": saved_at,
+        }))
+        st.session_state.watched_maps_saved_at = saved_at
+        return True
     except Exception:
-        pass
+        return False
 
 
 def initialize():
@@ -154,7 +161,7 @@ def render_sidebar():
             elif name not in st.session_state.watched_maps:
                 st.session_state.watched_maps.append(name)
                 st.session_state.map_options = sorted(set(st.session_state.map_options) | {name})
-                save_preferences()
+                st.session_state.watch_save_error = not save_preferences()
                 st.rerun()
             else:
                 st.info(f"Already watching {name}.")
@@ -164,13 +171,32 @@ def render_sidebar():
         rows = [{"Map name": name, "Player count": st.session_state.player_counts.get(name, "—")}
                 for name in st.session_state.watched_maps]
         st.table(rows)
+        saved_at = st.session_state.get("watched_maps_saved_at")
+        if saved_at:
+            st.caption(f"Watched map list saved in this browser · {saved_at.replace('T', ' ')}")
+        elif st.session_state.watched_maps:
+            st.caption("Watched map list is saved in this browser.")
+        if st.session_state.get("watch_save_error"):
+            st.warning("Could not save watched maps to browser storage. Keep a downloaded backup.")
+        if st.session_state.watched_maps:
+            backup = {
+                "watched_maps": st.session_state.watched_maps,
+                "exported_at": datetime.now(PACIFIC).isoformat(timespec="seconds"),
+            }
+            st.download_button(
+                "Download watched maps backup",
+                data=json.dumps(backup, indent=2),
+                file_name="uaro-watched-maps.json",
+                mime="application/json",
+                use_container_width=True,
+            )
         if st.session_state.watched_maps:
             with st.expander("Remove a watched map"):
                 remove_name = st.selectbox("Map", st.session_state.watched_maps, key="remove_map_picker")
                 if st.button("Remove map", key="remove_watched_map", use_container_width=True):
                     st.session_state.watched_maps.remove(remove_name)
                     st.session_state.player_counts.pop(remove_name, None)
-                    save_preferences()
+                    st.session_state.watch_save_error = not save_preferences()
                     st.rerun()
 
         st.divider()

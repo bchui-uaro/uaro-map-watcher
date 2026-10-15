@@ -33,6 +33,7 @@ const DEFAULT_ITEMS_KEY = "ro-farm-default-items";
 const MONSTERS_KEY = "ro-farm-monsters";
 const CUSTOM_ITEMS_KEY = "ro-farm-custom-items";
 const STORAGE_HEALTH_KEY = "ro-farm-storage-healthcheck";
+const LAST_SAVED_KEY = "ro-farm-last-saved";
 
 // The original artifact host exposed window.storage. In this Streamlit app,
 // use browser localStorage behind the same small async interface.
@@ -109,6 +110,15 @@ function fmtTime(ms) {
 
 function fmtZeny(n) {
   return Math.round(n || 0).toLocaleString("en-US");
+}
+
+function priceInfoLabel(item) {
+  if (item.priceSource === "manual") {
+    const updated = item.priceUpdatedAt ? new Date(item.priceUpdatedAt).toLocaleDateString() : "date unknown";
+    return `Manual · ${updated}`;
+  }
+  if (item.priceSource === "rAthena") return "rAthena base · date unknown";
+  return "Source/date unknown";
 }
 
 // Typo-tolerant matching: exact substring wins (scored by how early it
@@ -261,7 +271,10 @@ export default function ZenyFarmTracker({ initialBackup }) {
   const [bulkSelectedIds, setBulkSelectedIds] = useState([]);
   const [chartMetric, setChartMetric] = useState("zeny"); // "zeny" | "time"
   const [chartSplitByMap, setChartSplitByMap] = useState(true);
+  const [analyticsPeriod, setAnalyticsPeriod] = useState("all");
+  const [analyticsSelectedMaps, setAnalyticsSelectedMaps] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState(null);
   const [saveFlash, setSaveFlash] = useState(false);
   const [mapUpdateFlash, setMapUpdateFlash] = useState(false);
   const [storageOk, setStorageOk] = useState(null); // null = checking, true = working, false = failed
@@ -285,6 +298,12 @@ export default function ZenyFarmTracker({ initialBackup }) {
 
   const tickRef = useRef(null);
   const qtyInputRefs = useRef([]);
+
+  const markSavedNow = () => {
+    const savedAt = Date.now();
+    try { window.localStorage.setItem(LAST_SAVED_KEY, String(savedAt)); } catch (e) { /* storage warning is shown below */ }
+    setLastSavedAt(savedAt);
+  };
 
   // On first use in a browser, seed the bundled export so the supplied
   // history and maps are ready immediately. Existing browser data wins.
@@ -386,6 +405,10 @@ export default function ZenyFarmTracker({ initialBackup }) {
       } catch (e) {
         // no custom items saved yet
       }
+      try {
+        const savedAt = window.localStorage.getItem(LAST_SAVED_KEY);
+        if (savedAt) setLastSavedAt(Number(savedAt));
+      } catch (e) { /* last-save indicator is optional */ }
       setLoaded(true);
     })();
   }, []);
@@ -400,6 +423,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
           JSON.stringify({ items, extraItems, costItems, activeListTab, running, startedAt, accumulated, activeMapId, laps }),
           false
         );
+        markSavedNow();
       } catch (e) {
         console.error("Failed to save session", e);
       }
@@ -412,6 +436,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
     (async () => {
       try {
         await window.storage.set(CUSTOM_ITEMS_KEY, JSON.stringify(customItems), false);
+        markSavedNow();
       } catch (e) {
         console.error("Failed to save custom items", e);
       }
@@ -424,6 +449,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
     (async () => {
       try {
         await window.storage.set(HISTORY_KEY, JSON.stringify(history), false);
+        markSavedNow();
       } catch (e) {
         console.error("Failed to save history", e);
       }
@@ -513,9 +539,24 @@ export default function ZenyFarmTracker({ initialBackup }) {
   const getActiveList = () => getListByTab(activeListTab);
   const setActiveList = (newList) => setListByTabDirect(activeListTab, newList);
 
+  const saveCostTemplateToActiveMap = (nextCosts) => {
+    if (!activeMapId) return;
+    const newMaps = maps.map((map) => map.id !== activeMapId ? map : {
+      ...map,
+      costs: nextCosts.filter((it) => it.name.trim()).map((it) => ({
+        name: it.name.trim(), sell: it.sell || 0, qty: Number(it.qty) || 0,
+        count: !!it.count, priceSource: it.priceSource, priceUpdatedAt: it.priceUpdatedAt,
+      })),
+    });
+    setMaps(newMaps);
+    window.storage.set(MAPS_KEY, JSON.stringify(newMaps), false)
+      .then(markSavedNow)
+      .catch((e) => console.error("Failed to save map costs", e));
+  };
+
   const updateItem = (id, field, value) => {
-    setActiveList(
-      getActiveList().map((it) => {
+    const currentList = getActiveList();
+    const updatedList = currentList.map((it) => {
         if (it.id !== id) return it;
         if (field === "name") {
           // Re-guess the type as the name changes, unless the person already
@@ -526,19 +567,28 @@ export default function ZenyFarmTracker({ initialBackup }) {
         if (field === "type") {
           return { ...it, type: value, typeManual: true };
         }
-        return { ...it, [field]: value };
-      })
-    );
+        return field === "sell"
+          ? { ...it, sell: value, priceSource: "manual", priceUpdatedAt: Date.now() }
+          : { ...it, [field]: value };
+      });
+    setActiveList(updatedList);
+    if (activeListTab === "costs" && ["qty", "name", "sell"].includes(field)) saveCostTemplateToActiveMap(updatedList);
     if (field === "sell") {
       const current = getActiveList().find((it) => it.id === id);
       if (current) registerUnknownItems([{ name: current.name, sell: value }]);
     }
   };
 
-  const removeItem = (id) => setActiveList(getActiveList().filter((it) => it.id !== id));
+  const removeItem = (id) => {
+    const updatedList = getActiveList().filter((it) => it.id !== id);
+    setActiveList(updatedList);
+    if (activeListTab === "costs") saveCostTemplateToActiveMap(updatedList);
+  };
 
   const addBlankItem = () => {
-    setActiveList([...getActiveList(), { id: uid(), name: "", qty: 0, sell: 0, sellType: "vend", type: "misc", typeManual: false, count: false }]);
+    const updatedList = [...getActiveList(), { id: uid(), name: "", qty: 0, sell: 0, sellType: "vend", type: "misc", typeManual: false, count: false }];
+    setActiveList(updatedList);
+    if (activeListTab === "costs") saveCostTemplateToActiveMap(updatedList);
   };
 
   const toggleSellType = (id) => {
@@ -670,13 +720,13 @@ export default function ZenyFarmTracker({ initialBackup }) {
   const selectMap = (map) => {
     setActiveMapId(map.id);
     setItems(
-      map.items.map((it) => ({ id: uid(), name: it.name, qty: 0, sell: it.sell, sellType: "vend", type: defaultTypeFor(it.name), typeManual: false, count: !!it.count }))
+      map.items.map((it) => ({ id: uid(), name: it.name, qty: 0, sell: it.sell, sellType: "vend", type: defaultTypeFor(it.name), typeManual: false, count: !!it.count, priceSource: it.priceSource, priceUpdatedAt: it.priceUpdatedAt }))
     );
     setExtraItems(
-      (map.extraItems || []).map((it) => ({ id: uid(), name: it.name, qty: 0, sell: it.sell, sellType: "vend", type: defaultTypeFor(it.name), typeManual: false, count: !!it.count }))
+      (map.extraItems || []).map((it) => ({ id: uid(), name: it.name, qty: 0, sell: it.sell, sellType: "vend", type: defaultTypeFor(it.name), typeManual: false, count: !!it.count, priceSource: it.priceSource, priceUpdatedAt: it.priceUpdatedAt }))
     );
     setCostItems(
-      (map.costs || []).map((it) => ({ id: uid(), name: it.name, qty: 0, sell: it.sell, sellType: "vend", type: defaultTypeFor(it.name), typeManual: false, count: !!it.count }))
+      (map.costs || []).map((it) => ({ id: uid(), name: it.name, qty: Number(it.qty) || 0, sell: it.sell, sellType: "vend", type: defaultTypeFor(it.name), typeManual: false, count: !!it.count, priceSource: it.priceSource, priceUpdatedAt: it.priceUpdatedAt }))
     );
   };
 
@@ -694,6 +744,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
     setMaps(newMaps);
     try {
       await window.storage.set(MAPS_KEY, JSON.stringify(newMaps), false);
+      markSavedNow();
     } catch (e) {
       console.error("Failed to save map order", e);
     }
@@ -763,6 +814,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
       text: mapItemsToText(map.items),
       extraText: mapItemsToText(map.extraItems || []),
       costText: mapItemsToText(map.costs || []),
+      costQtyMap: Object.fromEntries((map.costs || []).map((it) => [it.name.trim().toLowerCase(), Number(it.qty) || 0])),
       countMap,
     });
   };
@@ -779,6 +831,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
       text: mapItemsToText(items.filter((it) => it.name.trim())),
       extraText: mapItemsToText(extraItems.filter((it) => it.name.trim())),
       costText: mapItemsToText(costItems.filter((it) => it.name.trim())),
+      costQtyMap: Object.fromEntries(costItems.filter((it) => it.name.trim()).map((it) => [it.name.trim().toLowerCase(), Number(it.qty) || 0])),
       countMap,
     });
   };
@@ -803,6 +856,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
     setDefaultItems(newDefaults);
     try {
       await window.storage.set(DEFAULT_ITEMS_KEY, JSON.stringify(newDefaults), false);
+      markSavedNow();
     } catch (e) {
       console.error("Failed to save default items", e);
     }
@@ -815,13 +869,13 @@ export default function ZenyFarmTracker({ initialBackup }) {
     if (!activeMapId) return;
     const newItems = items
       .filter((it) => it.name.trim())
-      .map((it) => ({ name: it.name.trim(), sell: it.sell || 0, count: !!it.count }));
+      .map((it) => ({ name: it.name.trim(), sell: it.sell || 0, count: !!it.count, priceSource: it.priceSource, priceUpdatedAt: it.priceUpdatedAt }));
     const newExtras = extraItems
       .filter((it) => it.name.trim())
-      .map((it) => ({ name: it.name.trim(), sell: it.sell || 0, count: !!it.count }));
+      .map((it) => ({ name: it.name.trim(), sell: it.sell || 0, count: !!it.count, priceSource: it.priceSource, priceUpdatedAt: it.priceUpdatedAt }));
     const newCosts = costItems
       .filter((it) => it.name.trim())
-      .map((it) => ({ name: it.name.trim(), sell: it.sell || 0, count: !!it.count }));
+      .map((it) => ({ name: it.name.trim(), sell: it.sell || 0, qty: Number(it.qty) || 0, count: !!it.count, priceSource: it.priceSource, priceUpdatedAt: it.priceUpdatedAt }));
     registerUnknownItems([...newItems, ...newExtras, ...newCosts]);
     const newMaps = maps.map((m) =>
       m.id === activeMapId ? { ...m, items: newItems, extraItems: newExtras, costs: newCosts } : m
@@ -829,6 +883,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
     setMaps(newMaps);
     try {
       await window.storage.set(MAPS_KEY, JSON.stringify(newMaps), false);
+      markSavedNow();
     } catch (e) {
       console.error("Failed to update map", e);
     }
@@ -841,9 +896,25 @@ export default function ZenyFarmTracker({ initialBackup }) {
     const countMap = mapForm.countMap || {};
     const withCount = (parsed) =>
       parsed.map((it) => ({ ...it, count: !!countMap[it.name.trim().toLowerCase()] }));
-    const parsedItems = withCount(parseBulkItems(mapForm.text));
-    const parsedExtras = withCount(parseBulkItems(mapForm.extraText || ""));
-    const parsedCosts = withCount(parseBulkItems(mapForm.costText || ""));
+    const oldMap = mapForm.mode === "edit" ? maps.find((m) => m.id === mapForm.id) : null;
+    const withPriceInfo = (parsed, oldItems = []) => withCount(parsed).map((it) => {
+      const previous = oldItems.find((old) => old.name.trim().toLowerCase() === it.name.trim().toLowerCase());
+      const samePrice = previous && Number(previous.sell) === Number(it.sell);
+      return { ...it, priceSource: samePrice ? previous.priceSource : "manual", priceUpdatedAt: samePrice ? previous.priceUpdatedAt : Date.now() };
+    });
+    const parsedItems = withPriceInfo(parseBulkItems(mapForm.text), oldMap?.items || []);
+    const parsedExtras = withPriceInfo(parseBulkItems(mapForm.extraText || ""), oldMap?.extraItems || []);
+    const parsedCosts = withCount(parseBulkItems(mapForm.costText || "")).map((it) => {
+      const key = it.name.trim().toLowerCase();
+      const previous = (oldMap?.costs || []).find((old) => old.name.trim().toLowerCase() === key);
+      const samePrice = previous && Number(previous.sell) === Number(it.sell);
+      return {
+        ...it,
+        qty: Number(mapForm.costQtyMap?.[key] ?? previous?.qty) || 0,
+        priceSource: samePrice ? previous.priceSource : "manual",
+        priceUpdatedAt: samePrice ? previous.priceUpdatedAt : Date.now(),
+      };
+    });
     if (!mapForm.name.trim()) return;
     registerUnknownItems([...parsedItems, ...parsedExtras, ...parsedCosts]);
 
@@ -863,6 +934,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
     setMaps(newMaps);
     try {
       await window.storage.set(MAPS_KEY, JSON.stringify(newMaps), false);
+      markSavedNow();
     } catch (e) {
       console.error("Failed to save map", e);
     }
@@ -876,6 +948,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
     if (activeMapId === id) setActiveMapId(null);
     try {
       await window.storage.set(MAPS_KEY, JSON.stringify(newMaps), false);
+      markSavedNow();
     } catch (e) {
       console.error("Failed to delete map", e);
     }
@@ -1175,7 +1248,9 @@ export default function ZenyFarmTracker({ initialBackup }) {
       const exists = costItems.some((it) => it.name.trim().toLowerCase() === item.name.trim().toLowerCase());
       if (!exists) {
         const row = { id: uid(), name: item.name, qty: 0, sell: defaultSellFor(item), sellType: "vend", type: defaultTypeFor(item.name), typeManual: false, count: false };
-        setCostItems([...costItems, row]);
+        const updatedCosts = [...costItems, row];
+        setCostItems(updatedCosts);
+        saveCostTemplateToActiveMap(updatedCosts);
       }
       setItemQuery("");
       setItemDropdownOpen(false);
@@ -1204,13 +1279,13 @@ export default function ZenyFarmTracker({ initialBackup }) {
       durationMs: elapsedMs,
       items: items
         .filter((it) => (it.qty || 0) > 0)
-        .map((it) => ({ id: uid(), name: it.name, qty: it.qty || 0, sell: it.sell || 0 })),
+        .map((it) => ({ id: uid(), name: it.name, qty: it.qty || 0, sell: it.sell || 0, priceSource: it.priceSource, priceUpdatedAt: it.priceUpdatedAt })),
       extraItems: extraItems
         .filter((it) => (it.qty || 0) > 0)
-        .map((it) => ({ id: uid(), name: it.name, qty: it.qty || 0, sell: it.sell || 0 })),
+        .map((it) => ({ id: uid(), name: it.name, qty: it.qty || 0, sell: it.sell || 0, priceSource: it.priceSource, priceUpdatedAt: it.priceUpdatedAt })),
       costs: costItems
         .filter((it) => (it.qty || 0) > 0)
-        .map((it) => ({ id: uid(), name: it.name, qty: it.qty || 0, sell: it.sell || 0 })),
+        .map((it) => ({ id: uid(), name: it.name, qty: it.qty || 0, sell: it.sell || 0, priceSource: it.priceSource, priceUpdatedAt: it.priceUpdatedAt })),
     };
     const updatedHistory = [entry, ...history];
     // Save before clearing the active session so an immediate close cannot
@@ -1251,7 +1326,9 @@ export default function ZenyFarmTracker({ initialBackup }) {
       history.map((h) =>
         h.id !== histId
           ? h
-          : { ...h, [listKey]: (h[listKey] || []).map((it) => (it.id === itemId ? { ...it, [field]: value } : it)) }
+          : { ...h, [listKey]: (h[listKey] || []).map((it) => (it.id === itemId
+            ? field === "sell" ? { ...it, sell: value, priceSource: "manual", priceUpdatedAt: Date.now() } : { ...it, [field]: value }
+            : it)) }
       )
     );
   };
@@ -1382,15 +1459,38 @@ export default function ZenyFarmTracker({ initialBackup }) {
     setExpandedHistoryId(mergedEntry.id);
   };
 
-  const MAP_CHART_COLORS = ["#ff4b4b", "#ff4b4b", "#dc3545", "#7c3aed", "#16a34a", "#d97706", "#2563eb", "#a21caf"];
-  const chartMapNames = useMemo(() => Array.from(new Set(history.map((h) => h.mapName || "Unknown"))), [history]);
-  const mapColorFor = (name) => MAP_CHART_COLORS[chartMapNames.indexOf(name) % MAP_CHART_COLORS.length];
+  const MAP_CHART_COLORS = ["#ff4b4b", "#2563eb", "#16a34a", "#7c3aed", "#d97706", "#0891b2", "#be123c", "#4d7c0f"];
+  const allChartMapNames = useMemo(() => Array.from(new Set(history.map((h) => h.mapName || "Unknown"))), [history]);
+  const mapColorFor = (name) => MAP_CHART_COLORS[allChartMapNames.indexOf(name) % MAP_CHART_COLORS.length];
+  const analyticsHistory = useMemo(() => {
+    const rangeDays = analyticsPeriod === "7d" ? 7 : analyticsPeriod === "30d" ? 30 : analyticsPeriod === "90d" ? 90 : null;
+    const cutoff = rangeDays === null ? null : Date.now() - rangeDays * 24 * 3600000;
+    return history.filter((entry) => {
+      if (cutoff !== null && entry.date < cutoff) return false;
+      return analyticsSelectedMaps === null || analyticsSelectedMaps.includes(entry.mapName || "Unknown");
+    });
+  }, [history, analyticsPeriod, analyticsSelectedMaps]);
+  const chartMapNames = useMemo(() => Array.from(new Set(analyticsHistory.map((h) => h.mapName || "Unknown"))), [analyticsHistory]);
+  const mapSessionStats = useMemo(() => {
+    const groups = new Map();
+    analyticsHistory.forEach((entry) => {
+      const name = entry.mapName || "Unknown";
+      const rate = historyZenyPerHour(entry);
+      const stats = groups.get(name) || { name, count: 0, totalRate: 0, bestRate: 0 };
+      stats.count += 1;
+      stats.totalRate += rate;
+      stats.bestRate = Math.max(stats.bestRate, rate);
+      groups.set(name, stats);
+    });
+    return [...groups.values()].map((stats) => ({ ...stats, averageRate: stats.totalRate / stats.count }))
+      .sort((a, b) => b.averageRate - a.averageRate);
+  }, [analyticsHistory]);
 
   // Sum every session's zeny total and duration into its calendar day (local
   // time), broken down per map, for the daily analytics chart.
   const dailyChartData = useMemo(() => {
     const byDay = new Map();
-    history.forEach((h) => {
+    analyticsHistory.forEach((h) => {
       const d = new Date(h.date);
       const dayKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
       const mapName = h.mapName || "Unknown";
@@ -1429,7 +1529,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
         zenyPerHr: row.totalDurationMs > 0 ? row.totalZeny / (row.totalDurationMs / 3600000) : 0,
       }))
       .sort((a, b) => a.sortDate - b.sortDate);
-  }, [history]);
+  }, [analyticsHistory]);
 
   const filteredHistory = useMemo(() => {
     let list = history;
@@ -1556,15 +1656,18 @@ export default function ZenyFarmTracker({ initialBackup }) {
                   />
                 </td>
                 <td className="px-2 py-1">
-                  <input
-                    type="number"
-                    min="0"
-                    value={it.sell === 0 ? "" : it.sell}
-                    onChange={(e) => updateHistoryItem(h.id, listKey, it.id, "sell", parseFloat(e.target.value) || 0)}
-                    placeholder="0"
-                    className="bg-transparent outline-none w-full"
-                    style={{ color: "#374151", fontFamily: "ui-monospace, monospace", fontSize: "0.8rem" }}
-                  />
+                  <div>
+                    <input
+                      type="number"
+                      min="0"
+                      value={it.sell === 0 ? "" : it.sell}
+                      onChange={(e) => updateHistoryItem(h.id, listKey, it.id, "sell", parseFloat(e.target.value) || 0)}
+                      placeholder="0"
+                      className="bg-transparent outline-none w-full"
+                      style={{ color: "#374151", fontFamily: "ui-monospace, monospace", fontSize: "0.8rem" }}
+                    />
+                    <div style={{ color: "#6b7280", fontSize: "0.58rem", whiteSpace: "nowrap" }}>{priceInfoLabel(it)}</div>
+                  </div>
                 </td>
                 <td className="px-2 py-1" style={{ fontFamily: "ui-monospace, monospace", color: "#dc3545", fontSize: "0.8rem" }}>
                   {fmtZeny((it.qty || 0) * (it.sell || 0))}
@@ -1981,11 +2084,21 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 Storage isn't saving right now
               </div>
               <div style={{ color: "#7f1d1d", fontSize: "0.78rem", lineHeight: 1.4 }}>
-                Nothing you do here will be saved when this page closes. This usually means the artifact hasn't
-                been <strong>published</strong> yet — persistent storage only works on published artifacts. Publish
-                it, then reload this page to reconnect.
+                Browser storage could not be verified. Keep a JSON backup before closing this page, and check that
+                your browser allows site storage for this app.
               </div>
             </div>
+          </div>
+        )}
+
+        {storageOk === true && (
+          <div className="rounded-lg px-3 py-2 mb-5 flex items-center justify-between gap-2 flex-wrap" style={{ background: "#f3f4f6", border: "1px solid #d1d5db" }}>
+            <span style={{ color: "#242631", fontSize: "0.78rem" }}>
+              Saved in this browser{lastSavedAt ? ` · ${new Date(lastSavedAt).toLocaleString()}` : ""}. This is not a cloud backup.
+            </span>
+            <button onClick={openExport} className="text-xs underline" style={{ color: "#374151" }}>
+              Download backup
+            </button>
           </div>
         )}
 
@@ -2867,15 +2980,18 @@ export default function ZenyFarmTracker({ initialBackup }) {
                       />
                     </td>
                     <td className="px-3 py-1">
-                      <input
-                        type="number"
-                        min="0"
-                        value={it.sell === 0 ? "" : it.sell}
-                        onChange={(e) => updateItem(it.id, "sell", parseFloat(e.target.value) || 0)}
-                        placeholder="0"
-                        className="bg-transparent outline-none w-full"
-                        style={{ color: "#374151", fontFamily: "ui-monospace, monospace", fontSize: "0.85rem" }}
-                      />
+                      <div>
+                        <input
+                          type="number"
+                          min="0"
+                          value={it.sell === 0 ? "" : it.sell}
+                          onChange={(e) => updateItem(it.id, "sell", parseFloat(e.target.value) || 0)}
+                          placeholder="0"
+                          className="bg-transparent outline-none w-full"
+                          style={{ color: "#374151", fontFamily: "ui-monospace, monospace", fontSize: "0.85rem" }}
+                        />
+                        <div style={{ color: "#6b7280", fontSize: "0.58rem", whiteSpace: "nowrap" }}>{priceInfoLabel(it)}</div>
+                      </div>
                     </td>
                     <td
                       className="px-3 py-1"
@@ -3386,6 +3502,20 @@ export default function ZenyFarmTracker({ initialBackup }) {
               </span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              <label className="flex items-center gap-1.5 text-xs" style={{ color: "#374151" }}>
+                Period
+                <select
+                  value={analyticsPeriod}
+                  onChange={(e) => setAnalyticsPeriod(e.target.value)}
+                  className="px-2 py-1 rounded-md outline-none"
+                  style={{ background: "#ffffff", border: "1px solid #d1d5db", color: "#242631" }}
+                >
+                  <option value="all">All time</option>
+                  <option value="7d">7 days</option>
+                  <option value="30d">30 days</option>
+                  <option value="90d">90 days</option>
+                </select>
+              </label>
               <div className="flex items-center rounded-md overflow-hidden" style={{ border: "1px solid #d1d5db" }}>
                 {[
                   { key: "zeny", label: "Zeny" },
@@ -3418,6 +3548,53 @@ export default function ZenyFarmTracker({ initialBackup }) {
               )}
             </div>
           </div>
+
+          <div className="flex items-center gap-x-3 gap-y-1 flex-wrap mb-3" style={{ color: "#374151", fontSize: "0.74rem" }}>
+            <span>Compare maps:</span>
+            <button onClick={() => setAnalyticsSelectedMaps(null)} className="underline" style={{ color: "#374151" }}>
+              All maps
+            </button>
+            {allChartMapNames.map((name) => (
+              <label key={name} className="flex items-center gap-1 cursor-pointer">
+                <input
+                  type="checkbox"
+              checked={analyticsSelectedMaps === null || analyticsSelectedMaps.includes(name)}
+                  onChange={(e) => setAnalyticsSelectedMaps((current) => {
+                    const active = current === null ? allChartMapNames : current;
+                    const next = e.target.checked ? [...active, name] : active.filter((mapName) => mapName !== name);
+                    return next.length === allChartMapNames.length ? null : next;
+                  })}
+                  style={{ width: "12px", height: "12px", accentColor: mapColorFor(name) }}
+                />
+                {name}
+              </label>
+            ))}
+          </div>
+
+          {mapSessionStats.length > 0 && (
+            <div className="overflow-x-auto mb-4">
+              <table className="w-full text-left" style={{ borderCollapse: "collapse", fontSize: "0.76rem" }}>
+                <thead>
+                  <tr style={{ background: "#eef0f3", color: "#242631" }}>
+                    <th className="px-2 py-1.5">Map</th>
+                    <th className="px-2 py-1.5">Sessions</th>
+                    <th className="px-2 py-1.5">Average Zeny/hr</th>
+                    <th className="px-2 py-1.5">Best Zeny/hr</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mapSessionStats.map((stats) => (
+                    <tr key={stats.name} style={{ borderTop: "1px solid #d1d5db", color: "#242631" }}>
+                      <td className="px-2 py-1.5" style={{ color: mapColorFor(stats.name), fontWeight: 600 }}>{stats.name}</td>
+                      <td className="px-2 py-1.5">{stats.count}</td>
+                      <td className="px-2 py-1.5">{fmtZeny(stats.averageRate)} z/hr</td>
+                      <td className="px-2 py-1.5">{fmtZeny(stats.bestRate)} z/hr</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {dailyChartData.length === 0 ? (
             <div className="py-8 text-center" style={{ color: "#4b5563", fontSize: "0.85rem" }}>
@@ -3483,7 +3660,6 @@ export default function ZenyFarmTracker({ initialBackup }) {
                           key={name}
                           dataKey={chartMetric === "zeny" ? `z__${name}` : `t__${name}`}
                           name={name}
-                          stackId="day"
                           fill={mapColorFor(name)}
                           radius={[0, 0, 0, 0]}
                         />
