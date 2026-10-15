@@ -632,11 +632,12 @@ export default function ZenyFarmTracker({ initialBackup }) {
     setBulkSelectedIds([]);
   };
 
-  // Drag-and-drop reordering + moving items between Main/Extras
+  // Drag-and-drop reordering and moving items between all three lists.
   const [dragItemId, setDragItemId] = useState(null);
   const [dragSourceTab, setDragSourceTab] = useState(null);
   const [dragOverItemId, setDragOverItemId] = useState(null);
   const [dragOverTab, setDragOverTab] = useState(null);
+  const dragTargetRef = useRef({ itemId: null, tab: null });
 
   const setListByTab = setListByTabDirect;
 
@@ -664,6 +665,8 @@ export default function ZenyFarmTracker({ initialBackup }) {
 
   const startDrag = (e, itemId) => {
     e.preventDefault();
+    e.stopPropagation();
+    dragTargetRef.current = { itemId: null, tab: null };
     setDragItemId(itemId);
     setDragSourceTab(activeListTab);
   };
@@ -678,12 +681,17 @@ export default function ZenyFarmTracker({ initialBackup }) {
       const tabEl = el?.closest("[data-drag-tab]");
       const rowEl = el?.closest("[data-drag-item-id]");
       if (tabEl) {
-        setDragOverTab(tabEl.getAttribute("data-drag-tab"));
+        const tab = tabEl.getAttribute("data-drag-tab");
+        dragTargetRef.current = { itemId: null, tab };
+        setDragOverTab(tab);
         setDragOverItemId(null);
       } else if (rowEl) {
-        setDragOverItemId(rowEl.getAttribute("data-drag-item-id"));
+        const itemId = rowEl.getAttribute("data-drag-item-id");
+        dragTargetRef.current = { itemId, tab: null };
+        setDragOverItemId(itemId);
         setDragOverTab(null);
       } else {
+        dragTargetRef.current = { itemId: null, tab: null };
         setDragOverItemId(null);
         setDragOverTab(null);
       }
@@ -692,10 +700,11 @@ export default function ZenyFarmTracker({ initialBackup }) {
     const handleUp = () => {
       if (finished) return;
       finished = true;
-      if (dragOverTab && dragOverTab !== dragSourceTab) {
-        moveItemToTab(dragItemId, dragSourceTab, dragOverTab);
-      } else if (dragOverItemId && dragOverItemId !== dragItemId) {
-        reorderWithinList(dragSourceTab, dragItemId, dragOverItemId);
+      const target = dragTargetRef.current;
+      if (target.tab && target.tab !== dragSourceTab) {
+        moveItemToTab(dragItemId, dragSourceTab, target.tab);
+      } else if (target.itemId && target.itemId !== dragItemId) {
+        reorderWithinList(dragSourceTab, dragItemId, target.itemId);
       }
       setDragItemId(null);
       setDragSourceTab(null);
@@ -705,17 +714,13 @@ export default function ZenyFarmTracker({ initialBackup }) {
 
     window.addEventListener("pointermove", handleMove);
     window.addEventListener("pointerup", handleUp);
-    window.addEventListener("touchmove", handleMove, { passive: false });
-    window.addEventListener("touchend", handleUp);
     document.body.style.userSelect = "none";
     return () => {
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
-      window.removeEventListener("touchmove", handleMove);
-      window.removeEventListener("touchend", handleUp);
       document.body.style.userSelect = "";
     };
-  }, [dragItemId, dragSourceTab, dragOverItemId, dragOverTab, items, extraItems]);
+  }, [dragItemId, dragSourceTab, dragOverItemId, dragOverTab, items, extraItems, costItems]);
 
   const selectMap = (map) => {
     setActiveMapId(map.id);
@@ -1463,7 +1468,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
   const allChartMapNames = useMemo(() => Array.from(new Set(history.map((h) => h.mapName || "Unknown"))), [history]);
   const mapColorFor = (name) => MAP_CHART_COLORS[allChartMapNames.indexOf(name) % MAP_CHART_COLORS.length];
   const analyticsHistory = useMemo(() => {
-    const rangeDays = analyticsPeriod === "7d" ? 7 : analyticsPeriod === "30d" ? 30 : analyticsPeriod === "90d" ? 90 : null;
+    const rangeDays = analyticsPeriod === "7d" ? 7 : analyticsPeriod === "14d" ? 14 : analyticsPeriod === "30d" ? 30 : analyticsPeriod === "90d" ? 90 : null;
     const cutoff = rangeDays === null ? null : Date.now() - rangeDays * 24 * 3600000;
     return history.filter((entry) => {
       if (cutoff !== null && entry.date < cutoff) return false;
@@ -1666,7 +1671,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                       className="bg-transparent outline-none w-full"
                       style={{ color: "#374151", fontFamily: "ui-monospace, monospace", fontSize: "0.8rem" }}
                     />
-                    <div style={{ color: "#6b7280", fontSize: "0.58rem", whiteSpace: "nowrap" }}>{priceInfoLabel(it)}</div>
+                    {it.priceSource === "manual" && <div style={{ color: "#6b7280", fontSize: "0.58rem", whiteSpace: "nowrap" }}>{priceInfoLabel(it)}</div>}
                   </div>
                 </td>
                 <td className="px-2 py-1" style={{ fontFamily: "ui-monospace, monospace", color: "#dc3545", fontSize: "0.8rem" }}>
@@ -2709,11 +2714,13 @@ export default function ZenyFarmTracker({ initialBackup }) {
             {[
               { key: "main", label: "Main" },
               { key: "extras", label: "Extras" },
+              { key: "costs", label: "Costs" },
             ].map((tab) => (
               <button
                 key={tab.key}
                 data-drag-tab={tab.key}
                 onClick={() => setActiveListTab(tab.key)}
+                title={tab.key === "costs" ? "Track zeny spent while farming — deducted from your Main total and Zeny/Hr" : undefined}
                 className="rounded-t-md px-4 py-1.5 text-sm"
                 style={{
                   background: dragOverTab === tab.key ? "#e5e7eb" : activeListTab === tab.key ? "#f3f4f6" : "#eef0f3",
@@ -2732,21 +2739,6 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 )}
               </button>
             ))}
-            <button
-              onClick={() => setActiveListTab("costs")}
-              className="rounded-t-md px-4 py-1.5 text-sm"
-              style={{
-                background: activeListTab === "costs" ? "#f3f4f6" : "#eef0f3",
-                border: `1px solid ${activeListTab === "costs" ? "#dc3545" : "#d1d5db"}`,
-                borderBottom: activeListTab === "costs" ? "1px solid #f3f4f6" : "1px solid #d1d5db",
-                color: activeListTab === "costs" ? "#991b1b" : "#4b5563",
-                marginBottom: "-1px",
-                transition: "background 0.1s ease, border-color 0.1s ease",
-              }}
-              title="Track zeny spent while farming — deducted from your Main total and Zeny/Hr"
-            >
-              Costs
-            </button>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -2911,16 +2903,20 @@ export default function ZenyFarmTracker({ initialBackup }) {
                       />
                     </td>
                     <td className="px-2 py-1">
-                      {activeListTab === "costs" ? null : (
-                        <div
-                          onPointerDown={(e) => startDrag(e, it.id)}
-                          onTouchStart={(e) => startDrag(e, it.id)}
-                          style={{ cursor: "grab", touchAction: "none", color: "#4b5563" }}
-                          title="Drag to reorder or move to Extras"
-                        >
-                          <GripVertical size={15} />
-                        </div>
-                      )}
+                      <div
+                        onPointerDown={(e) => startDrag(e, it.id)}
+                        onPointerCancel={() => {
+                          dragTargetRef.current = { itemId: null, tab: null };
+                          setDragItemId(null);
+                          setDragSourceTab(null);
+                          setDragOverItemId(null);
+                          setDragOverTab(null);
+                        }}
+                        style={{ cursor: "grab", touchAction: "none", color: "#4b5563" }}
+                        title={`Drag to reorder or move to ${activeListTab === "main" ? "Extras or Costs" : activeListTab === "extras" ? "Main or Costs" : "Main or Extras"}`}
+                      >
+                        <GripVertical size={15} />
+                      </div>
                     </td>
                     <td className="px-4 py-1">
                       <div className="flex items-center gap-2">
@@ -2990,7 +2986,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                           className="bg-transparent outline-none w-full"
                           style={{ color: "#374151", fontFamily: "ui-monospace, monospace", fontSize: "0.85rem" }}
                         />
-                        <div style={{ color: "#6b7280", fontSize: "0.58rem", whiteSpace: "nowrap" }}>{priceInfoLabel(it)}</div>
+                        {it.priceSource === "manual" && <div style={{ color: "#6b7280", fontSize: "0.58rem", whiteSpace: "nowrap" }}>{priceInfoLabel(it)}</div>}
                       </div>
                     </td>
                     <td
@@ -3332,6 +3328,18 @@ export default function ZenyFarmTracker({ initialBackup }) {
                         {h.notes && h.notes.trim() && <StickyNote size={12} color="#ff4b4b" title={h.notes} />}
                         <Pencil size={12} color="#4b5563" />
                         {expanded ? <ChevronUp size={14} color="#4b5563" /> : <ChevronDown size={14} color="#4b5563" />}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteHistoryEntry(h.id);
+                          }}
+                          title="Delete session"
+                          aria-label={`Delete session from ${fmtDateTime(h.date)}`}
+                          className="p-1 rounded"
+                          style={{ color: "#dc3545", flexShrink: 0 }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
 
                       {expanded && (
@@ -3512,6 +3520,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 >
                   <option value="all">All time</option>
                   <option value="7d">7 days</option>
+                  <option value="14d">14 days</option>
                   <option value="30d">30 days</option>
                   <option value="90d">90 days</option>
                 </select>
