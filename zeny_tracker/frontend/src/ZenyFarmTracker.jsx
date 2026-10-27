@@ -637,7 +637,6 @@ export default function ZenyFarmTracker({ initialBackup }) {
   const [dragSourceTab, setDragSourceTab] = useState(null);
   const [dragOverItemId, setDragOverItemId] = useState(null);
   const [dragOverTab, setDragOverTab] = useState(null);
-  const dragTargetRef = useRef({ itemId: null, tab: null });
 
   const setListByTab = setListByTabDirect;
 
@@ -650,6 +649,7 @@ export default function ZenyFarmTracker({ initialBackup }) {
     const [moved] = newList.splice(fromIdx, 1);
     newList.splice(toIdx, 0, moved);
     setListByTab(tab, newList);
+    if (tab === "costs") saveCostTemplateToActiveMap(newList);
   };
 
   const moveItemToTab = (itemId, sourceTab, targetTab) => {
@@ -659,68 +659,65 @@ export default function ZenyFarmTracker({ initialBackup }) {
     if (idx === -1) return;
     const moved = sourceList[idx];
     setListByTab(sourceTab, sourceList.filter((it) => it.id !== itemId));
-    setListByTab(targetTab, [...getListByTab(targetTab), moved]);
+    const updatedTarget = [...getListByTab(targetTab), moved];
+    setListByTab(targetTab, updatedTarget);
+    if (sourceTab === "costs") saveCostTemplateToActiveMap(sourceList.filter((it) => it.id !== itemId));
+    if (targetTab === "costs") saveCostTemplateToActiveMap(updatedTarget);
     setActiveListTab(targetTab);
   };
 
+  const resetItemDrag = () => {
+    setDragItemId(null);
+    setDragSourceTab(null);
+    setDragOverItemId(null);
+    setDragOverTab(null);
+  };
+
   const startDrag = (e, itemId) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragTargetRef.current = { itemId: null, tab: null };
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(itemId));
     setDragItemId(itemId);
     setDragSourceTab(activeListTab);
   };
 
-  useEffect(() => {
-    if (!dragItemId) return;
-    let finished = false;
+  const dropItemOnTab = (e, targetTab) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const itemId = dragItemId || e.dataTransfer.getData("text/plain");
+    if (itemId && dragSourceTab && targetTab !== dragSourceTab) {
+      moveItemToTab(itemId, dragSourceTab, targetTab);
+    }
+    resetItemDrag();
+  };
 
-    const handleMove = (e) => {
-      const point = e.touches ? e.touches[0] : e;
-      const el = document.elementFromPoint(point.clientX, point.clientY);
-      const tabEl = el?.closest("[data-drag-tab]");
-      const rowEl = el?.closest("[data-drag-item-id]");
-      if (tabEl) {
-        const tab = tabEl.getAttribute("data-drag-tab");
-        dragTargetRef.current = { itemId: null, tab };
-        setDragOverTab(tab);
-        setDragOverItemId(null);
-      } else if (rowEl) {
-        const itemId = rowEl.getAttribute("data-drag-item-id");
-        dragTargetRef.current = { itemId, tab: null };
-        setDragOverItemId(itemId);
-        setDragOverTab(null);
-      } else {
-        dragTargetRef.current = { itemId: null, tab: null };
-        setDragOverItemId(null);
-        setDragOverTab(null);
+  const dropItemOnRow = (e, overId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const itemId = dragItemId || e.dataTransfer.getData("text/plain");
+    const sourceTab = dragSourceTab;
+    const targetTab = activeListTab;
+    if (!itemId || !sourceTab || itemId === overId) {
+      resetItemDrag();
+      return;
+    }
+    if (sourceTab === targetTab) {
+      reorderWithinList(sourceTab, itemId, overId);
+    } else {
+      const sourceList = getListByTab(sourceTab);
+      const moved = sourceList.find((it) => it.id === itemId);
+      const overIndex = getListByTab(targetTab).findIndex((it) => it.id === overId);
+      if (moved && overIndex !== -1) {
+        const updatedSource = sourceList.filter((it) => it.id !== itemId);
+        const updatedTarget = [...getListByTab(targetTab)];
+        updatedTarget.splice(overIndex, 0, moved);
+        setListByTab(sourceTab, updatedSource);
+        setListByTab(targetTab, updatedTarget);
+        if (sourceTab === "costs") saveCostTemplateToActiveMap(updatedSource);
+        if (targetTab === "costs") saveCostTemplateToActiveMap(updatedTarget);
       }
-    };
-
-    const handleUp = () => {
-      if (finished) return;
-      finished = true;
-      const target = dragTargetRef.current;
-      if (target.tab && target.tab !== dragSourceTab) {
-        moveItemToTab(dragItemId, dragSourceTab, target.tab);
-      } else if (target.itemId && target.itemId !== dragItemId) {
-        reorderWithinList(dragSourceTab, dragItemId, target.itemId);
-      }
-      setDragItemId(null);
-      setDragSourceTab(null);
-      setDragOverItemId(null);
-      setDragOverTab(null);
-    };
-
-    window.addEventListener("pointermove", handleMove);
-    window.addEventListener("pointerup", handleUp);
-    document.body.style.userSelect = "none";
-    return () => {
-      window.removeEventListener("pointermove", handleMove);
-      window.removeEventListener("pointerup", handleUp);
-      document.body.style.userSelect = "";
-    };
-  }, [dragItemId, dragSourceTab, dragOverItemId, dragOverTab, items, extraItems, costItems]);
+    }
+    resetItemDrag();
+  };
 
   const selectMap = (map) => {
     setActiveMapId(map.id);
@@ -2720,6 +2717,14 @@ export default function ZenyFarmTracker({ initialBackup }) {
                 key={tab.key}
                 data-drag-tab={tab.key}
                 onClick={() => setActiveListTab(tab.key)}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  setDragOverTab(tab.key);
+                }}
+                onDragLeave={() => setDragOverTab(null)}
+                onDrop={(e) => dropItemOnTab(e, tab.key)}
+                onDragEnd={resetItemDrag}
                 title={tab.key === "costs" ? "Track zeny spent while farming — deducted from your Main total and Zeny/Hr" : undefined}
                 className="rounded-t-md px-4 py-1.5 text-sm"
                 style={{
@@ -2881,6 +2886,13 @@ export default function ZenyFarmTracker({ initialBackup }) {
                   <tr
                     key={it.id}
                     data-drag-item-id={it.id}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      setDragOverItemId(it.id);
+                    }}
+                    onDragLeave={() => setDragOverItemId(null)}
+                    onDrop={(e) => dropItemOnRow(e, it.id)}
                     style={{
                       background:
                         dragOverItemId === it.id
@@ -2904,15 +2916,10 @@ export default function ZenyFarmTracker({ initialBackup }) {
                     </td>
                     <td className="px-2 py-1">
                       <div
-                        onPointerDown={(e) => startDrag(e, it.id)}
-                        onPointerCancel={() => {
-                          dragTargetRef.current = { itemId: null, tab: null };
-                          setDragItemId(null);
-                          setDragSourceTab(null);
-                          setDragOverItemId(null);
-                          setDragOverTab(null);
-                        }}
-                        style={{ cursor: "grab", touchAction: "none", color: "#4b5563" }}
+                        draggable
+                        onDragStart={(e) => startDrag(e, it.id)}
+                        onDragEnd={resetItemDrag}
+                        style={{ cursor: "grab", color: "#4b5563" }}
                         title={`Drag to reorder or move to ${activeListTab === "main" ? "Extras or Costs" : activeListTab === "extras" ? "Main or Costs" : "Main or Extras"}`}
                       >
                         <GripVertical size={15} />
